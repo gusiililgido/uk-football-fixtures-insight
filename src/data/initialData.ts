@@ -19,7 +19,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   freeTipsAdLock: true,
   adRewardKes: 5,
   adDurationSeconds: 20,
-  googleAdClientId: '',
+  googleAdClientId: 'ca-pub-3150087316179365',
   googleAdSlotId: '',
   adBannerMediaUrl: '',
   adBannerHeadline: 'Sponsored Partner Insight — Watch 20s to Earn KES 5 Wallet Credit!',
