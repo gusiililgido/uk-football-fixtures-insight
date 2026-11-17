@@ -64,7 +64,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       'Hello U.K FOOTBALL FIXTURES INSIGHT Support! I need assistance with my account.'
     )}`;
 
-  const whatsappGroupHref = settings.whatsappGroupUrl;
+  const whatsappGroupHref = settings.whatsappGroupUrl && settings.whatsappGroupUrl.includes("://whatsapp.com") ? settings.whatsappGroupUrl : ("https://" + "://whatsapp.comEDMcQr54KTW7D2KqrqiMkI");
   return (
     <div className="space-y-4">
       <section className="bg-[#0B0F19] text-white rounded-2xl p-4 shadow-lg border border-blue-900/40">
@@ -251,8 +251,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <a
           href={whatsappGroupHref}
-          target="_blank"
-          rel="noopener noreferrer"
           className="w-full flex items-center justify-between bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition"
         >
           <span className="flex items-center gap-2">

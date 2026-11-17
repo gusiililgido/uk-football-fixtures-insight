@@ -54,7 +54,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     year: 'numeric',
   });
 
-  const whatsappGroupHref = settings.whatsappGroupUrl;
+  const whatsappGroupHref = settings.whatsappGroupUrl && settings.whatsappGroupUrl.includes("://whatsapp.com") ? settings.whatsappGroupUrl : ("https://" + "://whatsapp.comEDMcQr54KTW7D2KqrqiMkI");
 
   return (
     <div className="space-y-4">
@@ -267,8 +267,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
           <a
             href={whatsappGroupHref}
-            target="_blank"
-            rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition"
           >
             <MessageCircle className="w-4 h-4" />

@@ -21,6 +21,7 @@ import { PaymentModal } from './components/PaymentModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { LegalHub } from './components/LegalHub';
+import { FAQView } from './components/FAQView';
 import { RewardedAdModal } from './components/RewardedAdModal';
 import {
   fetchCloudState,
@@ -44,7 +45,28 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('HOME');
+  const [activeTab, setActiveTab] = useState<ActiveTab>("HOME");
+  const [tabHistory, setTabHistory] = useState<ActiveTab[]>([]);
+
+  const handleSelectTab = (nextTab: ActiveTab) => {
+    if (nextTab !== activeTab) {
+      setTabHistory((prev) => [...prev.slice(-10), activeTab]);
+      setActiveTab(nextTab);
+    }
+  };
+
+  const handleGoBack = () => {
+    setTabHistory((prev) => {
+      if (prev.length === 0) {
+        setActiveTab("HOME");
+        return [];
+      }
+      const copy = [...prev];
+      const last = copy.pop()!;
+      setActiveTab(last);
+      return copy;
+    });
+  };
   const [settings, setSettings] = useState<AppSettings>(() => ({
     ...INITIAL_SETTINGS,
     ...loadSaved('ukffi_settings', INITIAL_SETTINGS),
@@ -127,7 +149,12 @@ export function App() {
           fetchCloudState<string[]>('announcements'),
         ]);
 
-      if (cSettings) setSettings((prev) => ({ ...prev, ...cSettings }));
+      if (cSettings) {
+        const fixedWa = cSettings.whatsappGroupUrl && cSettings.whatsappGroupUrl.includes("://whatsapp.com")
+          ? cSettings.whatsappGroupUrl
+          : "https://://whatsapp.com";
+        setSettings((prev) => ({ ...prev, ...cSettings, whatsappGroupUrl: fixedWa }));
+      }
       if (cSpotlight) setSpotlight(cSpotlight);
       if (cPredictions) setPredictions(cPredictions);
       if (cUsers) setUsers(cUsers);
@@ -270,14 +297,21 @@ export function App() {
   };
 
   const handleRequestNotifications = async () => {
-    if (!('Notification' in window)) return;
+    if (!("Notification" in window)) {
+      alert("Notifications are not supported on this browser.");
+      return;
+    }
     const perm = await Notification.requestPermission();
     setNotificationPermission(perm);
-    if (perm === 'granted') {
-      new Notification('U.K FOOTBALL FIXTURES INSIGHT', {
-        body: 'Matchday alerts enabled! You will be notified when new 98% insights drop.',
-        icon: '/icon.svg',
-      });
+    if (perm === "granted") {
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification("U.K FOOTBALL FIXTURES INSIGHT", {
+          body: "Matchday push alerts are now active! You will receive live updates on your screen.",
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+        });
+      }
     }
   };
 
@@ -344,7 +378,11 @@ export function App() {
   return (
     <Layout
       activeTab={activeTab}
-      setActiveTab={setActiveTab}
+      setActiveTab={handleSelectTab}
+      onGoBack={handleGoBack}
+      canGoBack={tabHistory.length > 0}
+      onInstallApp={handleInstallApp}
+      onRequestNotifications={handleRequestNotifications}
       liveTickerText={settings.liveTickerText}
       currentUserEmail={currentUserEmail}
       onOpenAuth={() => setShowAuthModal(true)}
@@ -354,7 +392,7 @@ export function App() {
         <HomeView
           spotlight={spotlight}
           settings={settings}
-          onNavigate={setActiveTab}
+          onNavigate={handleSelectTab}
           totalPredictionsCount={predictions.length}
           walletBalance={activeWalletBalance}
           dailyRewardClaimed={dailyRewardClaimed}
@@ -400,6 +438,8 @@ export function App() {
       )}
 
       {activeTab === 'LEGAL' && <LegalHub settings={settings} />}
+
+      {activeTab === 'FAQ' && <FAQView settings={settings} />}
 
       {activeTab === 'ADMIN' && isAdmin && (
         <AdminPanel

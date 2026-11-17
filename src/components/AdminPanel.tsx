@@ -98,7 +98,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setPick('');
     setOdds('');
     setAnalysisNote('');
-    notify('Match analysis published live!');
+    if ("serviceWorker" in navigator && Notification.permission === "granted") {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification("New Match Insight Published!", {
+          body: homeTeam.trim() + " vs " + awayTeam.trim() + " — " + pick.trim(),
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+        });
+      }).catch(() => {});
+    }
+    notify("Match analysis published live!");
   };
 
   const handleStatusChange = (id: string, status: MatchStatus) => {
@@ -598,6 +607,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               onChange={(e) => setSettings((p) => ({ ...p, paymentNumber: e.target.value }))}
               className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-xl"
             />
+            <input
+              type="text"
+              value={settings.whatsappGroupUrl}
+              onChange={(e) => setSettings((p) => ({ ...p, whatsappGroupUrl: e.target.value }))}
+              placeholder="WhatsApp Group URL"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+            />
+            <input
+              type="text"
+              value={settings.telegramChannelUrl}
+              onChange={(e) => setSettings((p) => ({ ...p, telegramChannelUrl: e.target.value }))}
+              placeholder="Telegram Channel URL"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+            />
+            <input
+              type="text"
+              value={settings.liveTickerText}
+              onChange={(e) => setSettings((p) => ({ ...p, liveTickerText: e.target.value }))}
+              placeholder="Live Scrolling Ticker Text"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+            />
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="text"
@@ -817,7 +847,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   if (!newAnnouncement.trim()) return;
                   setAnnouncements((prev) => [newAnnouncement.trim(), ...prev]);
                   setNewAnnouncement('');
-                  notify('Announcement published!');
+                  if ("serviceWorker" in navigator && Notification.permission === "granted") {
+                    navigator.serviceWorker.ready.then((reg) => {
+                      reg.showNotification("U.K FOOTBALL FIXTURES INSIGHT", {
+                        body: newAnnouncement.trim(),
+                        icon: "/icon-192.png",
+                        badge: "/icon-192.png",
+                      });
+                    }).catch(() => {});
+                  }
+                  notify("Announcement published & pushed to alerts!");
                 }}
                 className="bg-red-600 text-white text-xs font-extrabold px-4 rounded-xl"
               >
