@@ -20,6 +20,7 @@ import { SettingsView } from './components/SettingsView';
 import { PaymentModal } from './components/PaymentModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
+import { LegalHub } from './components/LegalHub';
 import { RewardedAdModal } from './components/RewardedAdModal';
 import {
   fetchCloudState,
@@ -397,6 +398,8 @@ export function App() {
           onRequestNotifications={handleRequestNotifications}
         />
       )}
+
+      {activeTab === 'LEGAL' && <LegalHub settings={settings} />}
 
       {activeTab === 'ADMIN' && isAdmin && (
         <AdminPanel

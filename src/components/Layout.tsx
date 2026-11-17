@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { ADMIN_EMAIL } from '../data/initialData';
 
-export type ActiveTab = 'HOME' | 'FREE' | 'DAY_DEAL' | 'VIP_MONTHLY' | 'SETTINGS' | 'ADMIN';
+export type ActiveTab = 'HOME' | 'FREE' | 'DAY_DEAL' | 'VIP_MONTHLY' | 'SETTINGS' | 'ADMIN' | 'LEGAL';
 
 interface LayoutProps {
   activeTab: ActiveTab;
@@ -129,6 +129,17 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Mandatory 18+ Non-Gambling Compliance Footer */}
       <footer className="max-w-3xl w-full mx-auto px-3 py-6 mt-4 border-t border-slate-200 text-center space-y-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold text-blue-700 pb-2">
+          <button onClick={() => setActiveTab('LEGAL')} className="hover:underline cursor-pointer">Match Reports</button>
+          <span>•</span>
+          <button onClick={() => setActiveTab('LEGAL')} className="hover:underline cursor-pointer">About Us</button>
+          <span>•</span>
+          <button onClick={() => setActiveTab('LEGAL')} className="hover:underline cursor-pointer">Privacy Policy</button>
+          <span>•</span>
+          <button onClick={() => setActiveTab('LEGAL')} className="hover:underline cursor-pointer">Terms</button>
+          <span>•</span>
+          <button onClick={() => setActiveTab('LEGAL')} className="hover:underline cursor-pointer">Contact</button>
+        </div>
         <div className="inline-flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-extrabold px-3 py-1 rounded-full">
           <span>18+ ONLY</span>
           <span>•</span>

@@ -7,7 +7,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   paymentNetworkLabel: 'M-Pesa / Airtel Money',
   dayDealPrice: '350',
   vipMonthlyPrice: '3500',
-  whatsappGroupUrl: 'https://' + '://whatsapp.com',
+  whatsappGroupUrl: "https://://whatsapp.com",
   telegramChannelUrl: 'https://' + 't.me/uk_Football_Insights',
   supportWhatsappNumber: '254704956915',
   liveTickerText:
