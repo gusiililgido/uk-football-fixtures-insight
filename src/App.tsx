@@ -20,11 +20,13 @@ import { SettingsView } from './components/SettingsView';
 import { PaymentModal } from './components/PaymentModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
+import { RewardedAdModal } from './components/RewardedAdModal';
 import {
   fetchCloudState,
   isSupabaseConfigured,
   saveCloudState,
 } from './lib/supabase';
+import { Wrench, LogIn } from 'lucide-react';
 
 function loadSaved<T>(key: string, fallback: T): T {
   try {
@@ -35,11 +37,17 @@ function loadSaved<T>(key: string, fallback: T): T {
   }
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('HOME');
-  const [settings, setSettings] = useState<AppSettings>(() =>
-    loadSaved('ukffi_settings', INITIAL_SETTINGS)
-  );
+  const [settings, setSettings] = useState<AppSettings>(() => ({
+    ...INITIAL_SETTINGS,
+    ...loadSaved('ukffi_settings', INITIAL_SETTINGS),
+  }));
   const [spotlight, setSpotlight] = useState<SpotlightMedia>(() =>
     loadSaved('ukffi_spotlight', INITIAL_SPOTLIGHT)
   );
@@ -52,22 +60,53 @@ export function App() {
   const [announcements, setAnnouncements] = useState<string[]>(() =>
     loadSaved('ukffi_announcements', [
       'Welcome to U.K FOOTBALL FIXTURES INSIGHT! Daily Free (2-5 Odds) & VIP Slips are updated every morning.',
-      'Need fast activation? Send payment and tap "I Have Paid" for instant WhatsApp verification.',
+      'Earn KES 5 per 20s sponsored ad in your Insight Wallet to unlock VIP & Day Deal plans!',
     ])
   );
 
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(() =>
     loadSaved('ukffi_current_user', null)
   );
+  const [guestWallet, setGuestWallet] = useState<number>(() =>
+    loadSaved('ukffi_guest_wallet', 0)
+  );
+  const [guestAdsCount, setGuestAdsCount] = useState<number>(() =>
+    loadSaved('ukffi_guest_ads', 0)
+  );
+  const [freeTipsUnlocked, setFreeTipsUnlocked] = useState<boolean>(() =>
+    loadSaved('ukffi_free_unlocked', false)
+  );
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [paymentModalTier, setPaymentModalTier] = useState<Exclude<
     PredictionTier,
     'FREE'
   > | null>(null);
+  const [adModalPurpose, setAdModalPurpose] = useState<'EARN_WALLET' | 'UNLOCK_FREE' | null>(
+    null
+  );
+
+  const [installPromptEvent, setInstallPromptEvent] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >(() =>
+    typeof window !== 'undefined' && 'Notification' in window
+      ? Notification.permission
+      : 'unsupported'
+  );
 
   const cloudLoaded = useRef(false);
 
-  // Pull live state from Supabase on initial load
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
       cloudLoaded.current = true;
@@ -84,7 +123,7 @@ export function App() {
           fetchCloudState<string[]>('announcements'),
         ]);
 
-      if (cSettings) setSettings(cSettings);
+      if (cSettings) setSettings((prev) => ({ ...prev, ...cSettings }));
       if (cSpotlight) setSpotlight(cSpotlight);
       if (cPredictions) setPredictions(cPredictions);
       if (cUsers) setUsers(cUsers);
@@ -128,10 +167,25 @@ export function App() {
     localStorage.setItem('ukffi_current_user', JSON.stringify(currentUserEmail));
   }, [currentUserEmail]);
 
+  useEffect(() => {
+    localStorage.setItem('ukffi_guest_wallet', JSON.stringify(guestWallet));
+  }, [guestWallet]);
+
+  useEffect(() => {
+    localStorage.setItem('ukffi_guest_ads', JSON.stringify(guestAdsCount));
+  }, [guestAdsCount]);
+
+  useEffect(() => {
+    localStorage.setItem('ukffi_free_unlocked', JSON.stringify(freeTipsUnlocked));
+  }, [freeTipsUnlocked]);
+
   const currentUser =
     users.find((u) => u.email.toLowerCase() === currentUserEmail?.toLowerCase()) || null;
 
   const isAdmin = currentUserEmail?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  const activeWalletBalance = currentUser ? currentUser.walletBalance || 0 : guestWallet;
+  const activeAdsWatched = currentUser ? currentUser.adsWatchedCount || 0 : guestAdsCount;
 
   const handleLogin = (email: string, name: string) => {
     setCurrentUserEmail(email);
@@ -144,10 +198,14 @@ export function App() {
           name,
           tier: 'FREE',
           expiresAt: null,
+          walletBalance: guestWallet,
+          adsWatchedCount: guestAdsCount,
           isBanned: false,
           isOnline: true,
         },
       ]);
+      setGuestWallet(0);
+      setGuestAdsCount(0);
     }
   };
 
@@ -155,6 +213,102 @@ export function App() {
     setCurrentUserEmail(null);
     if (activeTab === 'ADMIN') setActiveTab('HOME');
   };
+
+  const handleAdRewardEarned = (rewardKes: number) => {
+    if (adModalPurpose === 'UNLOCK_FREE') {
+      setFreeTipsUnlocked(true);
+    }
+    if (currentUserEmail) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.email.toLowerCase() === currentUserEmail.toLowerCase()
+            ? {
+                ...u,
+                walletBalance: (u.walletBalance || 0) + rewardKes,
+                adsWatchedCount: (u.adsWatchedCount || 0) + 1,
+              }
+            : u
+        )
+      );
+    } else {
+      setGuestWallet((w) => w + rewardKes);
+      setGuestAdsCount((c) => c + 1);
+    }
+  };
+
+  const handleRedeemWallet = (tier: Exclude<PredictionTier, 'FREE'>, cost: number) => {
+    if (!currentUserEmail) return;
+    const days = tier === 'VIP_MONTHLY' ? 30 : 1;
+    const expiryDate = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.email.toLowerCase() === currentUserEmail.toLowerCase()
+          ? {
+              ...u,
+              tier,
+              expiresAt: expiryDate,
+              walletBalance: Math.max(0, (u.walletBalance || 0) - cost),
+            }
+          : u
+      )
+    );
+  };
+
+  const handleRequestNotifications = async () => {
+    if (!('Notification' in window)) return;
+    const perm = await Notification.requestPermission();
+    setNotificationPermission(perm);
+    if (perm === 'granted') {
+      new Notification('U.K FOOTBALL FIXTURES INSIGHT', {
+        body: 'Matchday alerts enabled! You will be notified when new 98% insights drop.',
+        icon: '/icon.svg',
+      });
+    }
+  };
+
+  const handleInstallApp = async () => {
+    if (installPromptEvent) {
+      await installPromptEvent.prompt();
+      const choice = await installPromptEvent.userChoice;
+      setInstallPromptEvent(null);
+      if (choice.outcome === 'accepted') {
+        handleRequestNotifications();
+      }
+    } else {
+      alert(
+        'To install on your phone: Tap your browser menu (⋮ or Share) and select "Add to Home Screen" or "Install App".'
+      );
+      handleRequestNotifications();
+    }
+  };
+
+  if (settings.maintenanceMode && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#0B0F19] text-white flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+          <Wrench className="w-8 h-8" />
+        </div>
+        <span className="bg-red-600 text-white text-[11px] font-black px-3 py-1 rounded-full uppercase">
+          Scheduled Maintenance
+        </span>
+        <h1 className="text-xl font-black">U.K FOOTBALL FIXTURES INSIGHT</h1>
+        <p className="text-xs text-slate-300 max-w-md leading-relaxed">
+          {settings.maintenanceMessage}
+        </p>
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="text-xs text-slate-400 hover:text-white underline flex items-center gap-1 pt-4"
+        >
+          <LogIn className="w-3.5 h-3.5" />
+          <span>Admin Desk Access</span>
+        </button>
+        {showAuthModal && (
+          <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />
+        )}
+      </div>
+    );
+  }
 
   if (currentUser?.isBanned && !isAdmin) {
     return (
@@ -188,6 +342,12 @@ export function App() {
           settings={settings}
           onNavigate={setActiveTab}
           totalPredictionsCount={predictions.length}
+          walletBalance={activeWalletBalance}
+          onWatchAdForWallet={() => setAdModalPurpose('EARN_WALLET')}
+          canInstallApp={Boolean(installPromptEvent)}
+          onInstallApp={handleInstallApp}
+          notificationPermission={notificationPermission}
+          onRequestNotifications={handleRequestNotifications}
         />
       )}
 
@@ -200,6 +360,8 @@ export function App() {
           userTier={currentUser?.tier || 'FREE'}
           isAdmin={isAdmin}
           settings={settings}
+          freeTipsUnlocked={freeTipsUnlocked}
+          onOpenAdForFreeTips={() => setAdModalPurpose('UNLOCK_FREE')}
           onOpenPayment={(tier) => setPaymentModalTier(tier)}
         />
       )}
@@ -207,10 +369,17 @@ export function App() {
       {activeTab === 'SETTINGS' && (
         <SettingsView
           currentUser={currentUser}
+          walletBalance={activeWalletBalance}
+          adsWatchedCount={activeAdsWatched}
           settings={settings}
           announcements={announcements}
           onOpenAuth={() => setShowAuthModal(true)}
           onOpenPayment={(tier) => setPaymentModalTier(tier)}
+          onWatchAdForWallet={() => setAdModalPurpose('EARN_WALLET')}
+          canInstallApp={Boolean(installPromptEvent)}
+          onInstallApp={handleInstallApp}
+          notificationPermission={notificationPermission}
+          onRequestNotifications={handleRequestNotifications}
         />
       )}
 
@@ -224,16 +393,12 @@ export function App() {
           setSettings={setSettings}
           users={users}
           setUsers={setUsers}
-          announcements={announcements}
           setAnnouncements={setAnnouncements}
         />
       )}
 
       {showAuthModal && (
-        <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onLogin={handleLogin}
-        />
+        <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />
       )}
 
       {paymentModalTier && (
@@ -241,11 +406,22 @@ export function App() {
           tier={paymentModalTier}
           settings={settings}
           userEmail={currentUserEmail}
+          walletBalance={activeWalletBalance}
+          onRedeemWallet={handleRedeemWallet}
           onClose={() => setPaymentModalTier(null)}
           onRequireLogin={() => {
             setPaymentModalTier(null);
             setShowAuthModal(true);
           }}
+        />
+      )}
+
+      {adModalPurpose && (
+        <RewardedAdModal
+          settings={settings}
+          purpose={adModalPurpose}
+          onComplete={() => handleAdRewardEarned(settings.adRewardKes)}
+          onClose={() => setAdModalPurpose(null)}
         />
       )}
     </Layout>

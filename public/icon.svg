@@ -1,0 +1,8 @@
+<svg xmlns="http://w3.org" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0B0F19"/>
+  <path d="M256 68L412 132V252C412 352 344 432 256 456C168 432 100 352 100 252V132L256 68Z" fill="#1D4ED8"/>
+  <path d="M256 104L378 154V250C378 330 324 396 256 418C188 396 134 330 134 250V154L256 104Z" fill="#0B0F19"/>
+  <text x="256" y="252" text-anchor="middle" fill="#FFFFFF" font-family="system-ui, sans-serif" font-weight="900" font-size="88">UK</text>
+  <rect x="166" y="282" width="180" height="36" rx="18" fill="#DC2626"/>
+  <text x="256" y="306" text-anchor="middle" fill="#FFFFFF" font-family="system-ui, sans-serif" font-weight="800" font-size="20">INSIGHT</text>
+</svg>

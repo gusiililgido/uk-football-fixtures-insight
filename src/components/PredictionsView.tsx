@@ -10,6 +10,8 @@ import {
   Crown,
   Sparkles,
   ArrowRight,
+  PlayCircle,
+  Coins,
 } from 'lucide-react';
 import { AppSettings, MatchStatus, Prediction, PredictionTier } from '../types';
 
@@ -19,6 +21,8 @@ interface PredictionsViewProps {
   userTier: PredictionTier;
   isAdmin: boolean;
   settings: AppSettings;
+  freeTipsUnlocked: boolean;
+  onOpenAdForFreeTips: () => void;
   onOpenPayment: (tier: Exclude<PredictionTier, 'FREE'>) => void;
 }
 
@@ -28,14 +32,22 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
   userTier,
   isAdmin,
   settings,
+  freeTipsUnlocked,
+  onOpenAdForFreeTips,
   onOpenPayment,
 }) => {
   const tierPredictions = predictions
     .filter((p) => p.tier === tier)
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
 
-  // Determine whether the user has unlocked this section
-  const hasAccess =
+  const isFreeAdLocked =
+    tier === 'FREE' &&
+    !isAdmin &&
+    settings.adsEnabled &&
+    settings.freeTipsAdLock &&
+    !freeTipsUnlocked;
+
+  const hasPaidAccess =
     isAdmin ||
     tier === 'FREE' ||
     userTier === 'VIP_MONTHLY' ||
@@ -61,7 +73,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       benefits: [
         'High-value 20 to 70 odds curated daily accumulator',
         'Includes full tactical breakdown & kickoff alerts',
-        'Instant WhatsApp activation after payment verification',
+        'Unlock via M-Pesa/Airtel OR use your Earned Ad Wallet Balance',
       ],
     },
     VIP_MONTHLY: {
@@ -72,14 +84,13 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       benefits: [
         'Full 30-day access to both VIP Monthly (70–100 Odds) & Day Deal slips',
         'Priority analyst support & early lineup injury insights',
-        'Maximum statistical edge across Premier League & top leagues',
+        'Unlock via M-Pesa/Airtel OR use your Earned Ad Wallet Balance',
       ],
     },
   }[tier];
 
   return (
     <div className="space-y-4">
-      {/* Pinned Tier Header & Benefits Card */}
       <div className="bg-[#0B0F19] text-white rounded-2xl p-4 shadow-lg border border-blue-900/40">
         <div className="flex items-center justify-between gap-2">
           <span
@@ -96,7 +107,6 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
           {sectionMeta.title}
         </h2>
 
-        {/* Pinned Benefits List */}
         <div className="mt-3 bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-1.5">
           <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-400 flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
@@ -111,8 +121,34 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
         </div>
       </div>
 
-      {/* Locked Paywall View if User Has Not Purchased */}
-      {!hasAccess ? (
+      {isFreeAdLocked ? (
+        <div className="bg-white rounded-2xl border-2 border-emerald-600 p-5 text-center shadow-xl space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
+            <PlayCircle className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+              <Coins className="w-3 h-3" /> Free Access + Wallet Reward
+            </span>
+            <h3 className="text-lg font-black text-[#0B0F19] mt-1.5">
+              Unlock Today’s {tierPredictions.length} Free Predictions
+            </h3>
+            <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto leading-relaxed">
+              Watch one short <strong>{settings.adDurationSeconds}-second sponsored ad</strong> to unlock all Daily Free tips immediately and earn{' '}
+              <strong className="text-emerald-700">+KES {settings.adRewardKes}</strong> into your Insight Wallet!
+            </p>
+          </div>
+          <button
+            onClick={onOpenAdForFreeTips}
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm py-3.5 px-7 rounded-xl shadow-lg inline-flex items-center justify-center gap-2 transition cursor-pointer"
+          >
+            <PlayCircle className="w-5 h-5" />
+            <span>
+              Watch {settings.adDurationSeconds}s Ad to Unlock (+{settings.adRewardKes} KES)
+            </span>
+          </button>
+        </div>
+      ) : !hasPaidAccess ? (
         <div className="bg-white rounded-2xl border-2 border-blue-600 p-5 text-center shadow-xl space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mx-auto border border-blue-200">
             {tier === 'VIP_MONTHLY' ? (
@@ -130,7 +166,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
               Unlock Today’s {sectionMeta.oddsRange} Analysis
             </h3>
             <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto leading-relaxed">
-              Get immediate access to today’s verified {sectionMeta.oddsRange} selections ({tierPredictions.length} active fixtures ready). Pay securely via {settings.paymentNetworkLabel} and verify in one tap on WhatsApp.
+              Get immediate access to today’s verified {sectionMeta.oddsRange} selections ({tierPredictions.length} active fixtures ready). Pay via {settings.paymentNetworkLabel} or redeem your Earned Ad Wallet Balance.
             </p>
           </div>
 
@@ -141,29 +177,22 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
 
           <div>
             <button
-              onClick={() => onOpenPayment(tier)}
-              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black text-sm py-3.5 px-8 rounded-xl shadow-lg inline-flex items-center justify-center gap-2 transition"
+              onClick={() => onOpenPayment(tier as Exclude<PredictionTier, 'FREE'>)}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black text-sm py-3.5 px-8 rounded-xl shadow-lg inline-flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <span>JOIN NOW!</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-
-          <p className="text-[11px] text-slate-400">
-            18+ Analysis Only • No betting inside the app • Instant WhatsApp verification
-          </p>
         </div>
       ) : (
-        /* Unlocked Match Prediction Cards */
         <div className="space-y-3">
           {tierPredictions.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-500">
               New {sectionMeta.title} analysis is being finalized by our desk. Check back shortly!
             </div>
           ) : (
-            tierPredictions.map((item) => (
-              <PredictionCard key={item.id} item={item} />
-            ))
+            tierPredictions.map((item) => <PredictionCard key={item.id} item={item} />)
           )}
         </div>
       )}
@@ -202,7 +231,6 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:border-blue-400 transition">
-      {/* Top Row: League, Pinned Icon & Status Badge */}
       <div className="flex items-center justify-between gap-2 text-xs mb-2">
         <div className="flex items-center gap-1.5 font-bold text-slate-600">
           {item.pinned && <Pin className="w-3.5 h-3.5 text-red-600 fill-red-600" />}
@@ -216,7 +244,6 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
         </span>
       </div>
 
-      {/* Match Teams & Kickoff */}
       <div className="flex items-center justify-between gap-2 py-1">
         <div>
           <h4 className="text-base font-black text-[#0B0F19]">
@@ -227,19 +254,13 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
           </div>
         </div>
         <div className="text-right shrink-0 bg-[#0B0F19] text-white px-3 py-1.5 rounded-xl">
-          <div className="text-[9px] uppercase tracking-wider text-blue-300 font-bold">
-            Odds
-          </div>
+          <div className="text-[9px] uppercase tracking-wider text-blue-300 font-bold">Odds</div>
           <div className="text-sm font-black text-amber-400">{item.odds}</div>
         </div>
       </div>
-
-      {/* Pick & Confidence Highlight */}
       <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
         <div>
-          <span className="text-[10px] font-bold uppercase text-blue-700 block">
-            Analysed Selection
-          </span>
+          <span className="text-[10px] font-bold uppercase text-blue-700 block">Analysed Selection</span>
           <span className="text-xs sm:text-sm font-black text-[#0B0F19]">{item.pick}</span>
         </div>
         <span className="inline-flex items-center gap-1 bg-blue-700 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg shrink-0">
@@ -247,8 +268,6 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
           {item.confidence}
         </span>
       </div>
-
-      {/* Analyst Note */}
       {item.analysisNote && (
         <p className="text-xs text-slate-600 mt-2.5 leading-relaxed">
           <strong>Insight:</strong> {item.analysisNote}

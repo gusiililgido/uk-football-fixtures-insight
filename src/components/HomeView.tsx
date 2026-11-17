@@ -11,6 +11,10 @@ import {
   Sparkles,
   Calendar,
   ShieldAlert,
+  Download,
+  Bell,
+  PlayCircle,
+  Wallet,
 } from 'lucide-react';
 import { AppSettings, SpotlightMedia } from '../types';
 import { ActiveTab } from './Layout';
@@ -20,6 +24,12 @@ interface HomeViewProps {
   settings: AppSettings;
   onNavigate: (tab: ActiveTab) => void;
   totalPredictionsCount: number;
+  walletBalance: number;
+  onWatchAdForWallet: () => void;
+  canInstallApp: boolean;
+  onInstallApp: () => void;
+  notificationPermission: NotificationPermission | 'unsupported';
+  onRequestNotifications: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -27,6 +37,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
   settings,
   onNavigate,
   totalPredictionsCount,
+  walletBalance,
+  onWatchAdForWallet,
+  canInstallApp,
+  onInstallApp,
+  notificationPermission,
+  onRequestNotifications,
 }) => {
   const todayFormatted = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -35,9 +51,51 @@ export const HomeView: React.FC<HomeViewProps> = ({
     year: 'numeric',
   });
 
+  const handleOpenWhatsAppGroup = () => {
+    const cleanUrl = settings.whatsappGroupUrl.replace(/\?.*$/, '');
+    const win = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      window.location.href = cleanUrl;
+    }
+  };
+
   return (
-    <div className="space-y-5">
-      {/* 1. Premium Obsidian & Royal Blue Hero Card */}
+    <div className="space-y-4">
+      {/* 1. App Download / Install & Notification Permission Strip */}
+      {(canInstallApp || notificationPermission === 'default') && (
+        <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white rounded-2xl p-3.5 shadow-md border border-blue-400/30 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="space-y-0.5">
+            <div className="text-xs font-black uppercase tracking-wide flex items-center gap-1.5">
+              <Download className="w-4 h-4 text-amber-300" />
+              <span>Install Official Mobile App</span>
+            </div>
+            <p className="text-[11px] text-blue-100">
+              Add to your phone screen for fast access & instant matchday alerts.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {canInstallApp && (
+              <button
+                onClick={onInstallApp}
+                className="bg-white text-[#0B0F19] hover:bg-amber-300 font-black text-xs px-3.5 py-2 rounded-xl shadow transition cursor-pointer"
+              >
+                Download App
+              </button>
+            )}
+            {notificationPermission === 'default' && (
+              <button
+                onClick={onRequestNotifications}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow flex items-center gap-1 transition cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Allow Alerts</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Premium Obsidian & Royal Blue Hero Card */}
       <section className="rounded-2xl bg-gradient-to-br from-[#0B0F19] via-[#111827] to-blue-950 text-white p-5 shadow-xl border border-blue-800/40 relative overflow-hidden">
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -61,7 +119,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="grid grid-cols-3 gap-2 mt-4">
           <button
             onClick={() => onNavigate('FREE')}
-            className="bg-white text-[#0B0F19] hover:bg-blue-50 font-extrabold text-xs py-2.5 px-2 rounded-xl shadow flex flex-col items-center justify-center transition"
+            className="bg-white text-[#0B0F19] hover:bg-blue-50 font-extrabold text-xs py-2.5 px-2 rounded-xl shadow flex flex-col items-center justify-center transition cursor-pointer"
           >
             <Flame className="w-4 h-4 text-red-600 mb-1" />
             <span>Daily Free</span>
@@ -70,7 +128,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <button
             onClick={() => onNavigate('DAY_DEAL')}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs py-2.5 px-2 rounded-xl shadow flex flex-col items-center justify-center border border-blue-400/30 transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs py-2.5 px-2 rounded-xl shadow flex flex-col items-center justify-center border border-blue-400/30 transition cursor-pointer"
           >
             <Lock className="w-4 h-4 text-amber-300 mb-1" />
             <span>Day Deal</span>
@@ -81,7 +139,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <button
             onClick={() => onNavigate('VIP_MONTHLY')}
-            className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-2.5 px-2 rounded-xl shadow flex flex-col items-center justify-center transition"
+            className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-2.5 px-2 rounded-xl shadow flex flex-col items-center justify-center transition cursor-pointer"
           >
             <Crown className="w-4 h-4 text-amber-200 mb-1" />
             <span>VIP Monthly</span>
@@ -92,7 +150,38 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* 2. Large Admin Spotlight Media Card (Image / Video / Guide) */}
+      {/* 3. Rewarded Ad Wallet Earning Card */}
+      {settings.adsEnabled && (
+        <section className="bg-white rounded-2xl border-2 border-emerald-600/30 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                <Wallet className="w-3 h-3" /> WALLET: KES {walletBalance}
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">
+                Non-Withdrawable • Sub Credits
+              </span>
+            </div>
+            <h3 className="text-sm font-black text-[#0B0F19]">
+              Watch {settings.adDurationSeconds}s Sponsored Ad & Earn +KES {settings.adRewardKes}
+            </h3>
+            <p className="text-xs text-slate-600">
+              Collect wallet credits to unlock <strong>Day Deal ({settings.dayDealPrice}/=)</strong> or{' '}
+              <strong>VIP Monthly ({settings.vipMonthlyPrice}/=)</strong> automatically!
+            </p>
+          </div>
+
+          <button
+            onClick={onWatchAdForWallet}
+            className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <PlayCircle className="w-4 h-4" />
+            <span>Watch Ad (+{settings.adRewardKes} KES)</span>
+          </button>
+        </section>
+      )}
+
+      {/* 4. Large Admin Spotlight Media Card */}
       <section className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
         <div className="bg-[#0B0F19] px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -104,14 +193,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <span className="text-[11px] text-blue-300 font-medium">{spotlight.updatedAt}</span>
         </div>
 
-        {/* Media Display Area */}
         {spotlight.mediaType === 'video' && spotlight.mediaUrl ? (
           <div className="bg-black aspect-video w-full">
-            <video
-              src={spotlight.mediaUrl}
-              controls
-              className="w-full h-full object-cover"
-            />
+            <video src={spotlight.mediaUrl} controls className="w-full h-full object-cover" />
           </div>
         ) : spotlight.mediaType === 'image' && spotlight.mediaUrl ? (
           <div className="relative aspect-video sm:aspect-[21/9] w-full bg-slate-900 overflow-hidden">
@@ -120,10 +204,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
               alt={spotlight.title}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F19]/80 via-transparent to-transparent" />
-            <span className="absolute bottom-3 left-3 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md uppercase">
-              Official Matchday Brief
-            </span>
           </div>
         ) : null}
 
@@ -137,7 +217,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* 3. Live Stats Strip */}
       <section className="grid grid-cols-3 gap-2.5">
         <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm text-center">
           <TrendingUp className="w-5 h-5 text-blue-600 mx-auto mb-1" />
@@ -156,73 +235,36 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* 4. Pinned Benefits & Trust Card */}
       <section className="bg-white rounded-2xl border-2 border-blue-600/20 p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-black uppercase tracking-wide text-blue-700">
-            Why Members Trust U.K Fixtures Insight
-          </h3>
-          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-            PINNED
-          </span>
+          <h3 className="text-sm font-black uppercase tracking-wide text-blue-700">Why Members Trust U.K Fixtures Insight</h3>
+          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">PINNED</span>
         </div>
-
         <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700">
           <li className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <span>
-              <strong>98% Historical Research Accuracy:</strong> Every fixture is filtered by team news, xG form, and head-to-head data.
-            </span>
+            <span><strong>98% Historical Research Accuracy:</strong> Every fixture is filtered by team news, xG form, and head-to-head data.</span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <span>
-              <strong>Clear Tier Options:</strong> Start with Daily Free (2–5 Odds), upgrade to Day Deal ({settings.dayDealPrice}/= for 20–70 Odds), or unlock VIP Monthly ({settings.vipMonthlyPrice}/= for 70–100 Odds).
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <span>
-              <strong>Instant WhatsApp Activation:</strong> Fast manual verification and direct analyst support whenever you need help.
-            </span>
+            <span><strong>Earn Free Subscriptions:</strong> Watch sponsored 20-second ads to collect KES {settings.adRewardKes} credits toward Day Deal or VIP access.</span>
           </li>
           <li className="flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <span>
-              <strong>18+ Analysis Only:</strong> Strictly non-gambling educational match research. No staking or betting inside the app.
-            </span>
+            <span><strong>18+ Analysis Only:</strong> Strictly non-gambling educational match research. No staking or betting inside the app.</span>
           </li>
         </ul>
       </section>
 
-      {/* 5. Official Community Links Card */}
       <section className="bg-[#0B0F19] text-white rounded-2xl p-4 shadow-md border border-slate-800">
-        <h3 className="text-sm font-extrabold tracking-wide">
-          Join Our Official Matchday Channels
-        </h3>
-        <p className="text-xs text-slate-400 mt-1">
-          Get instant match alerts, free slip notifications, and live community updates.
-        </p>
-
+        <h3 className="text-sm font-extrabold tracking-wide">Join Our Official Matchday Channels</h3>
+        <p className="text-xs text-slate-400 mt-1">Get instant match alerts, free slip notifications, and live community updates.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
-          <a
-            href={settings.whatsappGroupUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>Join Official WhatsApp Group</span>
-          </a>
-
-          <a
-            href={settings.telegramChannelUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition"
-          >
-            <Send className="w-4 h-4" />
-            <span>Join Telegram Channel</span>
+          <button onClick={handleOpenWhatsAppGroup} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition cursor-pointer">
+            <MessageCircle className="w-4 h-4" /><span>Join Official WhatsApp Group</span>
+          </button>
+          <a href={settings.telegramChannelUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition">
+            <Send className="w-4 h-4" /><span>Join Telegram Channel</span>
           </a>
         </div>
       </section>

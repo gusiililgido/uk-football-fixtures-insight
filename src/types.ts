@@ -37,6 +37,15 @@ export interface AppSettings {
   telegramChannelUrl: string;
   supportWhatsappNumber: string;
   liveTickerText: string;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  adsEnabled: boolean;
+  freeTipsAdLock: boolean;
+  adRewardKes: number;
+  adDurationSeconds: number;
+  googleAdClientId: string;
+  adBannerMediaUrl: string;
+  adBannerHeadline: string;
 }
 
 export interface UserProfile {
@@ -44,6 +53,8 @@ export interface UserProfile {
   name: string;
   tier: PredictionTier;
   expiresAt: string | null;
+  walletBalance: number;
+  adsWatchedCount: number;
   isBanned: boolean;
   isOnline: boolean;
 }
