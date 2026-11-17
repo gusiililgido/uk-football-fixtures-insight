@@ -14,6 +14,7 @@ import {
   Coins,
 } from 'lucide-react';
 import { AppSettings, MatchStatus, Prediction, PredictionTier } from '../types';
+import { GoogleAdBanner } from './GoogleAdBanner';
 
 interface PredictionsViewProps {
   tier: PredictionTier;
@@ -120,6 +121,8 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
           ))}
         </div>
       </div>
+
+      <GoogleAdBanner settings={settings} slotLabel={`${tier} SECTION SPONSOR`} />
 
       {isFreeAdLocked ? (
         <div className="bg-white rounded-2xl border-2 border-emerald-600 p-5 text-center shadow-xl space-y-4">

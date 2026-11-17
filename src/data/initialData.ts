@@ -20,6 +20,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   adRewardKes: 5,
   adDurationSeconds: 20,
   googleAdClientId: '',
+  googleAdSlotId: '',
   adBannerMediaUrl: '',
   adBannerHeadline: 'Sponsored Partner Insight — Watch 20s to Earn KES 5 Wallet Credit!',
 };
@@ -105,6 +106,7 @@ export const INITIAL_USERS: UserProfile[] = [
     expiresAt: '2099-12-31',
     walletBalance: 5000,
     adsWatchedCount: 0,
+    lastAdRewardDate: null,
     isBanned: false,
     isOnline: true,
   },
@@ -115,6 +117,7 @@ export const INITIAL_USERS: UserProfile[] = [
     expiresAt: '2026-11-18',
     walletBalance: 120,
     adsWatchedCount: 24,
+    lastAdRewardDate: null,
     isBanned: false,
     isOnline: true,
   },

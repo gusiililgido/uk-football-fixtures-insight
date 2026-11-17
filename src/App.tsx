@@ -73,8 +73,11 @@ export function App() {
   const [guestAdsCount, setGuestAdsCount] = useState<number>(() =>
     loadSaved('ukffi_guest_ads', 0)
   );
-  const [freeTipsUnlocked, setFreeTipsUnlocked] = useState<boolean>(() =>
-    loadSaved('ukffi_free_unlocked', false)
+  const [freeUnlockedDate, setFreeUnlockedDate] = useState<string | null>(() =>
+    loadSaved('ukffi_free_unlocked_date', null)
+  );
+  const [guestLastRewardDate, setGuestLastRewardDate] = useState<string | null>(() =>
+    loadSaved('ukffi_guest_reward_date', null)
   );
 
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -176,13 +179,19 @@ export function App() {
   }, [guestAdsCount]);
 
   useEffect(() => {
-    localStorage.setItem('ukffi_free_unlocked', JSON.stringify(freeTipsUnlocked));
-  }, [freeTipsUnlocked]);
+    localStorage.setItem('ukffi_free_unlocked_date', JSON.stringify(freeUnlockedDate));
+    localStorage.setItem('ukffi_guest_reward_date', JSON.stringify(guestLastRewardDate));
+  }, [freeUnlockedDate, guestLastRewardDate]);
 
   const currentUser =
     users.find((u) => u.email.toLowerCase() === currentUserEmail?.toLowerCase()) || null;
 
   const isAdmin = currentUserEmail?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const dailyRewardClaimed = currentUser
+    ? currentUser.lastAdRewardDate === todayKey
+    : guestLastRewardDate === todayKey;
+  const freeTipsUnlockedToday = freeUnlockedDate === todayKey || dailyRewardClaimed;
 
   const activeWalletBalance = currentUser ? currentUser.walletBalance || 0 : guestWallet;
   const activeAdsWatched = currentUser ? currentUser.adsWatchedCount || 0 : guestAdsCount;
@@ -200,6 +209,7 @@ export function App() {
           expiresAt: null,
           walletBalance: guestWallet,
           adsWatchedCount: guestAdsCount,
+          lastAdRewardDate: guestLastRewardDate,
           isBanned: false,
           isOnline: true,
         },
@@ -215,9 +225,10 @@ export function App() {
   };
 
   const handleAdRewardEarned = (rewardKes: number) => {
-    if (adModalPurpose === 'UNLOCK_FREE') {
-      setFreeTipsUnlocked(true);
+    if (adModalPurpose === "UNLOCK_FREE") {
+      setFreeUnlockedDate(todayKey);
     }
+    if (dailyRewardClaimed) return;
     if (currentUserEmail) {
       setUsers((prev) =>
         prev.map((u) =>
@@ -226,6 +237,7 @@ export function App() {
                 ...u,
                 walletBalance: (u.walletBalance || 0) + rewardKes,
                 adsWatchedCount: (u.adsWatchedCount || 0) + 1,
+                lastAdRewardDate: todayKey,
               }
             : u
         )
@@ -233,6 +245,7 @@ export function App() {
     } else {
       setGuestWallet((w) => w + rewardKes);
       setGuestAdsCount((c) => c + 1);
+      setGuestLastRewardDate(todayKey);
     }
   };
 
@@ -343,6 +356,7 @@ export function App() {
           onNavigate={setActiveTab}
           totalPredictionsCount={predictions.length}
           walletBalance={activeWalletBalance}
+          dailyRewardClaimed={dailyRewardClaimed}
           onWatchAdForWallet={() => setAdModalPurpose('EARN_WALLET')}
           canInstallApp={Boolean(installPromptEvent)}
           onInstallApp={handleInstallApp}
@@ -360,7 +374,7 @@ export function App() {
           userTier={currentUser?.tier || 'FREE'}
           isAdmin={isAdmin}
           settings={settings}
-          freeTipsUnlocked={freeTipsUnlocked}
+          freeTipsUnlocked={freeTipsUnlockedToday}
           onOpenAdForFreeTips={() => setAdModalPurpose('UNLOCK_FREE')}
           onOpenPayment={(tier) => setPaymentModalTier(tier)}
         />
@@ -371,6 +385,7 @@ export function App() {
           currentUser={currentUser}
           walletBalance={activeWalletBalance}
           adsWatchedCount={activeAdsWatched}
+          dailyRewardClaimed={dailyRewardClaimed}
           settings={settings}
           announcements={announcements}
           onOpenAuth={() => setShowAuthModal(true)}

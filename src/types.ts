@@ -44,6 +44,7 @@ export interface AppSettings {
   adRewardKes: number;
   adDurationSeconds: number;
   googleAdClientId: string;
+  googleAdSlotId: string;
   adBannerMediaUrl: string;
   adBannerHeadline: string;
 }
@@ -55,6 +56,7 @@ export interface UserProfile {
   expiresAt: string | null;
   walletBalance: number;
   adsWatchedCount: number;
+  lastAdRewardDate: string | null;
   isBanned: boolean;
   isOnline: boolean;
 }

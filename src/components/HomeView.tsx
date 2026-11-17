@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AppSettings, SpotlightMedia } from '../types';
 import { ActiveTab } from './Layout';
+import { GoogleAdBanner } from './GoogleAdBanner';
 
 interface HomeViewProps {
   spotlight: SpotlightMedia;
@@ -25,6 +26,7 @@ interface HomeViewProps {
   onNavigate: (tab: ActiveTab) => void;
   totalPredictionsCount: number;
   walletBalance: number;
+  dailyRewardClaimed: boolean;
   onWatchAdForWallet: () => void;
   canInstallApp: boolean;
   onInstallApp: () => void;
@@ -38,6 +40,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigate,
   totalPredictionsCount,
   walletBalance,
+  dailyRewardClaimed,
   onWatchAdForWallet,
   canInstallApp,
   onInstallApp,
@@ -51,13 +54,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     year: 'numeric',
   });
 
-  const handleOpenWhatsAppGroup = () => {
-    const cleanUrl = settings.whatsappGroupUrl.replace(/\?.*$/, '');
-    const win = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
-    if (!win) {
-      window.location.href = cleanUrl;
-    }
-  };
+  const whatsappGroupHref = settings.whatsappGroupUrl;
 
   return (
     <div className="space-y-4">
@@ -171,15 +168,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={onWatchAdForWallet}
-            className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center gap-1.5 transition cursor-pointer"
-          >
-            <PlayCircle className="w-4 h-4" />
-            <span>Watch Ad (+{settings.adRewardKes} KES)</span>
-          </button>
+          {dailyRewardClaimed ? (
+            <div className="shrink-0 bg-slate-100 border border-slate-300 text-slate-600 font-extrabold text-xs py-2.5 px-3.5 rounded-xl text-center">
+              Daily +{settings.adRewardKes} KES Claimed • Resets Tomorrow
+            </div>
+          ) : (
+            <button
+              onClick={onWatchAdForWallet}
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <PlayCircle className="w-4 h-4" />
+              <span>Watch Ad (+{settings.adRewardKes} KES)</span>
+            </button>
+          )}
         </section>
       )}
+
+      <GoogleAdBanner settings={settings} slotLabel="HOME MATCHDAY SPONSOR" />
 
       {/* 4. Large Admin Spotlight Media Card */}
       <section className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
@@ -260,9 +265,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <h3 className="text-sm font-extrabold tracking-wide">Join Our Official Matchday Channels</h3>
         <p className="text-xs text-slate-400 mt-1">Get instant match alerts, free slip notifications, and live community updates.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3">
-          <button onClick={handleOpenWhatsAppGroup} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition cursor-pointer">
-            <MessageCircle className="w-4 h-4" /><span>Join Official WhatsApp Group</span>
-          </button>
+          <a
+            href={whatsappGroupHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Join Official WhatsApp Group</span>
+          </a>
           <a href={settings.telegramChannelUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition">
             <Send className="w-4 h-4" /><span>Join Telegram Channel</span>
           </a>

@@ -570,6 +570,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl"
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <input
+                type="text"
+                value={settings.googleAdClientId}
+                onChange={(e) => setSettings((p) => ({ ...p, googleAdClientId: e.target.value }))}
+                placeholder="Google AdSense ID (ca-pub-...)"
+                className="px-3 py-2 text-xs border border-slate-300 rounded-xl"
+              />
+              <input
+                type="text"
+                value={settings.googleAdSlotId}
+                onChange={(e) => setSettings((p) => ({ ...p, googleAdSlotId: e.target.value }))}
+                placeholder="Google Ad Slot ID (1234567890)"
+                className="px-3 py-2 text-xs border border-slate-300 rounded-xl"
+              />
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-2.5">

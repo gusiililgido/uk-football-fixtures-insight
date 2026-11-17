@@ -16,11 +16,13 @@ import {
   Download,
 } from 'lucide-react';
 import { AppSettings, PredictionTier, UserProfile } from '../types';
+import { GoogleAdBanner } from './GoogleAdBanner';
 
 interface SettingsViewProps {
   currentUser: UserProfile | null;
   walletBalance: number;
   adsWatchedCount: number;
+  dailyRewardClaimed: boolean;
   settings: AppSettings;
   announcements: string[];
   onOpenAuth: () => void;
@@ -36,6 +38,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   walletBalance,
   adsWatchedCount,
+  dailyRewardClaimed,
   settings,
   announcements,
   onOpenAuth,
@@ -61,13 +64,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       'Hello U.K FOOTBALL FIXTURES INSIGHT Support! I need assistance with my account.'
     )}`;
 
-  const handleOpenWhatsAppGroup = () => {
-    const cleanUrl = settings.whatsappGroupUrl.replace(/\?.*$/, '');
-    const win = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
-    if (!win) {
-      window.location.href = cleanUrl;
-    }
-  };
+  const whatsappGroupHref = settings.whatsappGroupUrl;
   return (
     <div className="space-y-4">
       <section className="bg-[#0B0F19] text-white rounded-2xl p-4 shadow-lg border border-blue-900/40">
@@ -123,13 +120,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </p>
 
         {settings.adsEnabled && (
-          <button
-            onClick={onWatchAdForWallet}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition cursor-pointer"
-          >
-            <PlayCircle className="w-4 h-4" />
-            <span>Watch {settings.adDurationSeconds}s Ad (+{settings.adRewardKes} KES)</span>
-          </button>
+          dailyRewardClaimed ? (
+            <div className="w-full bg-slate-100 border border-slate-300 text-slate-600 font-extrabold text-xs py-2.5 px-4 rounded-xl text-center">
+              Daily +{settings.adRewardKes} KES Claimed Today • Resets Tomorrow
+            </div>
+          ) : (
+            <button
+              onClick={onWatchAdForWallet}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <PlayCircle className="w-4 h-4" />
+              <span>Watch {settings.adDurationSeconds}s Ad (+{settings.adRewardKes} KES)</span>
+            </button>
+          )
         )}
       </section>
 
@@ -238,22 +241,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </section>
 
+      <GoogleAdBanner settings={settings} slotLabel="MEMBER HUB SPONSOR" />
+
       {/* Official Channels & Support (Unblocked WhatsApp Group) */}
       <section className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-2.5">
         <h3 className="text-sm font-black uppercase tracking-wide text-[#0B0F19] mb-1">
           Official Channels & 24/7 Support
         </h3>
 
-        <button
-          onClick={handleOpenWhatsAppGroup}
-          className="w-full flex items-center justify-between bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition cursor-pointer"
+        <a
+          href={whatsappGroupHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-between bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-xl shadow transition"
         >
           <span className="flex items-center gap-2">
             <MessageCircle className="w-4 h-4" />
             <span>Join Official WhatsApp Group</span>
           </span>
           <ArrowUpRight className="w-4 h-4" />
-        </button>
+        </a>
 
         <a
           href={settings.telegramChannelUrl}
