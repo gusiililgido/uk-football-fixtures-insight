@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Lock,
   CheckCircle2,
@@ -12,6 +12,11 @@ import {
   ArrowRight,
   PlayCircle,
   Coins,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Trophy,
 } from 'lucide-react';
 import { AppSettings, MatchStatus, Prediction, PredictionTier } from '../types';
 import { GoogleAdBanner } from './GoogleAdBanner';
@@ -25,6 +30,7 @@ interface PredictionsViewProps {
   freeTipsUnlocked: boolean;
   onOpenAdForFreeTips: () => void;
   onOpenPayment: (tier: Exclude<PredictionTier, 'FREE'>) => void;
+  onPreviewImage: (url: string, title: string, subtitle?: string) => void;
 }
 
 export const PredictionsView: React.FC<PredictionsViewProps> = ({
@@ -36,23 +42,50 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
   freeTipsUnlocked,
   onOpenAdForFreeTips,
   onOpenPayment,
+  onPreviewImage,
 }) => {
-  const tierPredictions = predictions
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const yesterdayIso = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  // 'ALL' shows all dates; 'YYYY-MM-DD' filters by specific calendar date
+  const [selectedDate, setSelectedDate] = useState<string>('ALL');
+
+  const tierAllDates = predictions
     .filter((p) => p.tier === tier)
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+
+  const tierPredictions =
+    selectedDate === 'ALL'
+      ? tierAllDates
+      : tierAllDates.filter((p) => p.matchDate === selectedDate);
+
+  const wonCount = tierPredictions.filter((p) => p.status === 'WON').length;
+  const lostCount = tierPredictions.filter((p) => p.status === 'LOST').length;
+
+  const isViewingPastHistory =
+    selectedDate !== 'ALL' && selectedDate < todayIso;
 
   const isFreeAdLocked =
     tier === 'FREE' &&
     !isAdmin &&
     settings.adsEnabled &&
     settings.freeTipsAdLock &&
-    !freeTipsUnlocked;
+    !freeTipsUnlocked &&
+    !isViewingPastHistory;
 
   const hasPaidAccess =
     isAdmin ||
     tier === 'FREE' ||
+    isViewingPastHistory ||
     userTier === 'VIP_MONTHLY' ||
     (tier === 'DAY_DEAL' && userTier === 'DAY_DEAL');
+
+  const shiftDate = (daysDelta: number) => {
+    const base = selectedDate === 'ALL' ? todayIso : selectedDate;
+    const dt = new Date(base + 'T00:00:00');
+    dt.setDate(dt.getDate() + daysDelta);
+    setSelectedDate(dt.toISOString().slice(0, 10));
+  };
 
   const sectionMeta = {
     FREE: {
@@ -63,7 +96,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       benefits: [
         'Updated every morning with verified U.K. & European fixtures',
         '2 to 5 combined odds focused on high-probability outcomes',
-        '98% historical statistical research accuracy',
+        'Full calendar history archive to verify yesterday & past results',
       ],
     },
     DAY_DEAL: {
@@ -72,9 +105,9 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       priceLabel: `KES ${settings.dayDealPrice}/=`,
       badgeColor: 'bg-blue-600',
       benefits: [
-        'High-value 20 to 70 odds curated daily accumulator',
-        'Includes full tactical breakdown & kickoff alerts',
-        'Unlock via M-Pesa/Airtel OR use your Earned Ad Wallet Balance',
+        'High-value 20 to 70 odds curated daily accumulator with betslip preview',
+        'Includes full tactical breakdown & SofaScore result verification',
+        'Unlock via M-Pesa/Airtel OR redeem Earned Ad Wallet Balance',
       ],
     },
     VIP_MONTHLY: {
@@ -83,13 +116,12 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       priceLabel: `KES ${settings.vipMonthlyPrice}/=`,
       badgeColor: 'bg-red-600',
       benefits: [
-        'Full 30-day access to both VIP Monthly (70–100 Odds) & Day Deal slips',
-        'Priority analyst support & early lineup injury insights',
-        'Unlock via M-Pesa/Airtel OR use your Earned Ad Wallet Balance',
+        'Full 30-day access to VIP Monthly (70–100 Odds) & Day Deal slips',
+        'Priority analyst support, betslip previews & verified result proofs',
+        'Unlock via M-Pesa/Airtel OR redeem Earned Ad Wallet Balance',
       ],
     },
   }[tier];
-
   return (
     <div className="space-y-4">
       <div className="bg-[#0B0F19] text-white rounded-2xl p-4 shadow-lg border border-blue-900/40">
@@ -122,6 +154,84 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
         </div>
       </div>
 
+      {/* Calendar Betting History Navigator */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-black text-[#0B0F19] uppercase">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <span>Match Calendar &amp; History</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] font-extrabold">
+            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+              {wonCount} WON
+            </span>
+            {lostCount > 0 && (
+              <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                {lostCount} LOST
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setSelectedDate('ALL')}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold cursor-pointer ${
+              selectedDate === 'ALL'
+                ? 'bg-[#0B0F19] text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            All ({tierAllDates.length})
+          </button>
+
+          <button
+            onClick={() => setSelectedDate(todayIso)}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold cursor-pointer ${
+              selectedDate === todayIso
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Today
+          </button>
+
+          <button
+            onClick={() => setSelectedDate(yesterdayIso)}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold cursor-pointer ${
+              selectedDate === yesterdayIso
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Yesterday
+          </button>
+
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              onClick={() => shiftDate(-1)}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+              title="Previous Day"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <input
+              type="date"
+              value={selectedDate === 'ALL' ? todayIso : selectedDate}
+              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+              className="px-2 py-1 text-[11px] font-bold border border-slate-300 rounded-xl bg-white text-[#0B0F19]"
+            />
+            <button
+              onClick={() => shiftDate(1)}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+              title="Next Day"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <GoogleAdBanner settings={settings} slotLabel={`${tier} SECTION SPONSOR`} />
 
       {isFreeAdLocked ? (
@@ -131,13 +241,13 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
           </div>
           <div>
             <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-              <Coins className="w-3 h-3" /> Free Access + Wallet Reward
+              <Coins className="w-3 h-3" /> Free Access + Daily Wallet Reward
             </span>
             <h3 className="text-lg font-black text-[#0B0F19] mt-1.5">
-              Unlock Today’s {tierPredictions.length} Free Predictions
+              Unlock Today’s Free Predictions
             </h3>
             <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto leading-relaxed">
-              Watch one short <strong>{settings.adDurationSeconds}-second sponsored ad</strong> to unlock all Daily Free tips immediately and earn{' '}
+              Watch one short <strong>{settings.adDurationSeconds}-second sponsored ad</strong> to unlock all Daily Free tips for the rest of today and claim{' '}
               <strong className="text-emerald-700">+KES {settings.adRewardKes}</strong> into your Insight Wallet!
             </p>
           </div>
@@ -169,7 +279,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
               Unlock Today’s {sectionMeta.oddsRange} Analysis
             </h3>
             <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto leading-relaxed">
-              Get immediate access to today’s verified {sectionMeta.oddsRange} selections ({tierPredictions.length} active fixtures ready). Pay via {settings.paymentNetworkLabel} or redeem your Earned Ad Wallet Balance.
+              Get immediate access to today’s verified {sectionMeta.oddsRange} selections &amp; betslip previews ({tierPredictions.length} fixtures). Pay via {settings.paymentNetworkLabel} or redeem your Earned Ad Wallet Balance.
             </p>
           </div>
 
@@ -191,19 +301,27 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       ) : (
         <div className="space-y-3">
           {tierPredictions.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-500">
-              New {sectionMeta.title} analysis is being finalized by our desk. Check back shortly!
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center text-xs text-slate-500">
+              No {sectionMeta.title} records found for <strong>{selectedDate}</strong>. Tap <strong>All</strong> or select another calendar date!
             </div>
           ) : (
-            tierPredictions.map((item) => <PredictionCard key={item.id} item={item} />)
+            tierPredictions.map((item) => (
+              <PredictionCard
+                key={item.id}
+                item={item}
+                onPreviewImage={onPreviewImage}
+              />
+            ))
           )}
         </div>
       )}
     </div>
   );
 };
-
-const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
+const PredictionCard: React.FC<{
+  item: Prediction;
+  onPreviewImage: (url: string, title: string, subtitle?: string) => void;
+}> = ({ item, onPreviewImage }) => {
   const statusStyles: Record<
     MatchStatus,
     { bg: string; text: string; icon: React.ReactNode }
@@ -239,12 +357,20 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
           {item.pinned && <Pin className="w-3.5 h-3.5 text-red-600 fill-red-600" />}
           <span>{item.league}</span>
         </div>
-        <span
-          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${badge.bg} ${badge.text}`}
-        >
-          {badge.icon}
-          <span>{item.status}</span>
-        </span>
+
+        <div className="flex items-center gap-1.5">
+          {item.finalScore && (
+            <span className="bg-[#0B0F19] text-amber-400 text-[11px] font-black px-2.5 py-0.5 rounded-full">
+              {item.finalScore}
+            </span>
+          )}
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${badge.bg} ${badge.text}`}
+          >
+            {badge.icon}
+            <span>{item.status}</span>
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 py-1">
@@ -257,13 +383,18 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
           </div>
         </div>
         <div className="text-right shrink-0 bg-[#0B0F19] text-white px-3 py-1.5 rounded-xl">
-          <div className="text-[9px] uppercase tracking-wider text-blue-300 font-bold">Odds</div>
+          <div className="text-[9px] uppercase tracking-wider text-blue-300 font-bold">
+            Odds
+          </div>
           <div className="text-sm font-black text-amber-400">{item.odds}</div>
         </div>
       </div>
+
       <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
         <div>
-          <span className="text-[10px] font-bold uppercase text-blue-700 block">Analysed Selection</span>
+          <span className="text-[10px] font-bold uppercase text-blue-700 block">
+            Analysed Selection
+          </span>
           <span className="text-xs sm:text-sm font-black text-[#0B0F19]">{item.pick}</span>
         </div>
         <span className="inline-flex items-center gap-1 bg-blue-700 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg shrink-0">
@@ -271,10 +402,48 @@ const PredictionCard: React.FC<{ item: Prediction }> = ({ item }) => {
           {item.confidence}
         </span>
       </div>
+
       {item.analysisNote && (
         <p className="text-xs text-slate-600 mt-2.5 leading-relaxed">
           <strong>Insight:</strong> {item.analysisNote}
         </p>
+      )}
+
+      {/* Optional Betslip Preview & SofaScore / LiveScore Result Proof Buttons */}
+      {(item.betslipImageUrl || item.resultProofUrl) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-100">
+          {item.betslipImageUrl && (
+            <button
+              onClick={() =>
+                onPreviewImage(
+                  item.betslipImageUrl!,
+                  `Betslip Preview: ${item.homeTeam} vs ${item.awayTeam}`,
+                  `${item.pick} • Odds: ${item.odds}`
+                )
+              }
+              className="flex items-center justify-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-800 border border-blue-300 font-extrabold text-xs py-2 px-3 rounded-xl transition cursor-pointer"
+            >
+              <ImageIcon className="w-4 h-4 text-blue-600" />
+              <span>View Betslip Image</span>
+            </button>
+          )}
+
+          {item.resultProofUrl && (
+            <button
+              onClick={() =>
+                onPreviewImage(
+                  item.resultProofUrl!,
+                  `Verified Result Proof: ${item.homeTeam} vs ${item.awayTeam}`,
+                  `${item.status}${item.finalScore ? ` (${item.finalScore})` : ''} • SofaScore / LiveScore Proof`
+                )
+              }
+              className="flex items-center justify-center gap-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-800 border border-emerald-300 font-extrabold text-xs py-2 px-3 rounded-xl transition cursor-pointer"
+            >
+              <Trophy className="w-4 h-4 text-emerald-600" />
+              <span>View Result Proof (SofaScore)</span>
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

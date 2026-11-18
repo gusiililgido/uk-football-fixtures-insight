@@ -9,12 +9,15 @@ export interface Prediction {
   homeTeam: string;
   awayTeam: string;
   kickoffTime: string;
-  matchDate: string;
+  matchDate: string; // YYYY-MM-DD for calendar history navigation
   pick: string;
   odds: string;
   confidence: string;
   analysisNote: string;
   status: MatchStatus;
+  finalScore?: string;
+  betslipImageUrl?: string;
+  resultProofUrl?: string;
   pinned?: boolean;
   locked?: boolean;
 }
@@ -26,6 +29,19 @@ export interface SpotlightMedia {
   mediaUrl: string;
   badgeText: string;
   updatedAt: string;
+  likesCount?: number;
+  viewsCount?: number;
+}
+
+export interface HomeFeedPost {
+  id: string;
+  badge: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  createdAt: string;
+  likesCount: number;
+  viewsCount: number;
 }
 
 export interface AppSettings {
@@ -38,6 +54,7 @@ export interface AppSettings {
   supportWhatsappNumber: string;
   liveTickerText: string;
   maintenanceMode: boolean;
+  screenshotProtection: boolean;
   maintenanceMessage: string;
   adsEnabled: boolean;
   freeTipsAdLock: boolean;
