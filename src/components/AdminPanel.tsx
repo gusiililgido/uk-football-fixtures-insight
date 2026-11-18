@@ -21,6 +21,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import {
+  AppNotification,
   AppSettings,
   HomeFeedPost,
   MatchStatus,
@@ -42,6 +43,7 @@ interface AdminPanelProps {
   users: UserProfile[];
   setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
   setAnnouncements: React.Dispatch<React.SetStateAction<string[]>>;
+  onPushNotification: (type: AppNotification["type"], title: string, body: string) => void;
 }
 
 type AdminSubTab = 'MATCHES' | 'SPOTLIGHT' | 'USERS' | 'SYSTEM';
@@ -78,6 +80,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   users,
   setUsers,
   setAnnouncements,
+  onPushNotification,
 }) => {
   const [subTab, setSubTab] = useState<AdminSubTab>('MATCHES');
   const [toast, setToast] = useState('');
@@ -101,6 +104,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [postImageUrl, setPostImageUrl] = useState('');
 
   const [newAnnouncement, setNewAnnouncement] = useState('');
+  const [boomMessage, setBoomMessage] = useState('BOOM! Today’s Free Bet WON 3/3! Congratulations to everyone who followed! 🎉🔥');
 
   const notify = (msg: string) => {
     setToast(msg);
@@ -167,12 +171,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setOdds('');
     setAnalysisNote('');
     setBetslipImageUrl('');
-    notify('Match analysis published live!');
+    onPushNotification(
+      "NEW_MATCH",
+      "NEW " + tier + " MATCH ADDED!",
+      homeTeam.trim() + " vs " + awayTeam.trim() + " (" + pick.trim() + " @ " + odds.trim() + ") is now live!"
+    );
+    notify("Match analysis published & users notified!");
   };
 
   const handleStatusChange = (id: string, status: MatchStatus) => {
+    const target = predictions.find((p) => p.id === id);
     setPredictions((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
-    notify(`Marked match as ${status}`);
+    if (status === "WON" && target) {
+      const scoreTxt = target.finalScore ? " (" + target.finalScore + ")" : "";
+      onPushNotification(
+        "WIN",
+        "BOOM! MATCH WON! CONGRATULATIONS!",
+        target.homeTeam + " vs " + target.awayTeam + scoreTxt + " — " + target.pick + " WON! 🎉🔥"
+      );
+    } else if (target) {
+      onPushNotification(
+        "LIVE_UPDATE",
+        "LIVE MATCH STATUS: " + status,
+        target.homeTeam + " vs " + target.awayTeam + " marked as " + status + "."
+      );
+    }
+    notify("Marked match as " + status + " & notified users!");
   };
 
   const handleScoreChange = (id: string, finalScore: string) => {
@@ -346,6 +370,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
       {subTab === 'MATCHES' && (
         <div className="space-y-4">
+          <div className="bg-gradient-to-r from-emerald-950 via-[#0B0F19] to-blue-950 text-white rounded-2xl border border-emerald-500/40 p-4 shadow-md space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <Trophy className="w-4 h-4" /> Send Instant "BOOM!" Win Celebration
+              </span>
+              <span className="text-[10px] font-bold bg-emerald-600 px-2 py-0.5 rounded-full">ALL USERS</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                "BOOM! Today’s Free Bet WON 3/3! Congratulations! 🎉🔥",
+                "BOOM! Day Deal Slip (20-70 Odds) WON! Congratulations VIPs! 🏆",
+                "BOOM! VIP Monthly Mega Slip WON! Massive Congratulations! 💰🔥",
+              ].map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setBoomMessage(preset)}
+                  className="text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 cursor-pointer"
+                >
+                  Preset {idx + 1}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={boomMessage}
+                onChange={(e) => setBoomMessage(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs text-[#0B0F19] bg-white rounded-xl font-semibold"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!boomMessage.trim()) return;
+                  onPushNotification("WIN", "BOOM! CONGRATULATIONS!", boomMessage.trim());
+                  notify("BOOM! Win alert sent to all users!");
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 rounded-xl shrink-0 cursor-pointer"
+              >
+                Send BOOM!
+              </button>
+            </div>
+          </div>
           <form
             onSubmit={handleAddMatch}
             className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-2.5"

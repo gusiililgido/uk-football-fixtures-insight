@@ -8,6 +8,7 @@ import {
   INITIAL_USERS,
 } from './data/initialData';
 import {
+  AppNotification,
   AppSettings,
   HomeFeedPost,
   Prediction,
@@ -27,6 +28,7 @@ import { LegalHub } from './components/LegalHub';
 import { FAQView } from './components/FAQView';
 import { SplashScreen } from './components/SplashScreen';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
+import { NotificationsModal } from './components/NotificationsModal';
 import {
   fetchCloudState,
   isSupabaseConfigured,
@@ -95,6 +97,21 @@ export function App() {
     loadSaved('ukffi_guest_reward_date', null)
   );
 
+  const [notifications, setNotifications] = useState<AppNotification[]>(() =>
+    loadSaved("ukffi_notifications", [
+      {
+        id: "welcome-win",
+        type: "WIN",
+        title: "BOOM! YESTERDAY’S SLIPS WON!",
+        body: "Leeds United 3-1 & Aston Villa 2-0 landed cleanly! Check Match Calendar for verified results.",
+        createdAt: "Recent",
+      },
+    ])
+  );
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [lastSeenNotifId, setLastSeenNotifId] = useState<string>(() =>
+    loadSaved("ukffi_last_seen_notif", "")
+  );
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [paymentModalTier, setPaymentModalTier] = useState<Exclude<
     PredictionTier,
@@ -198,7 +215,7 @@ export function App() {
     }
 
     async function syncFromCloud() {
-      const [cSettings, cSpotlight, cHomePosts, cPredictions, cUsers, cAnnouncements] =
+      const [cSettings, cSpotlight, cHomePosts, cPredictions, cUsers, cAnnouncements, cNotifications] =
         await Promise.all([
           fetchCloudState<AppSettings>('settings'),
           fetchCloudState<SpotlightMedia>('spotlight'),
@@ -206,6 +223,7 @@ export function App() {
           fetchCloudState<Prediction[]>('predictions'),
           fetchCloudState<UserProfile[]>('users'),
           fetchCloudState<string[]>('announcements'),
+          fetchCloudState<AppNotification[]>('notifications'),
         ]);
 
       if (cSettings) {
@@ -221,6 +239,7 @@ export function App() {
       if (cPredictions) setPredictions(cPredictions);
       if (cUsers) setUsers(cUsers);
       if (cAnnouncements) setAnnouncements(cAnnouncements);
+      if (cNotifications) setNotifications(cNotifications);
 
       cloudLoaded.current = true;
     }
@@ -266,9 +285,11 @@ export function App() {
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('ukffi_announcements', JSON.stringify(announcements));
+    localStorage.setItem("ukffi_announcements", JSON.stringify(announcements));
+    localStorage.setItem("ukffi_notifications", JSON.stringify(notifications));
+    if (cloudLoaded.current) saveCloudState("notifications", notifications);
     if (cloudLoaded.current) saveCloudState('announcements', announcements);
-  }, [announcements]);
+  }, [announcements, notifications]);
 
   useEffect(() => {
     localStorage.setItem('ukffi_current_user', JSON.stringify(currentUserEmail));
@@ -347,6 +368,36 @@ export function App() {
       setGuestAdsCount(0);
     }
   };
+
+  const handlePushNotification = (
+    type: AppNotification["type"],
+    title: string,
+    body: string
+  ) => {
+    const newItem: AppNotification = {
+      id: "notif-" + Date.now(),
+      type,
+      title,
+      body,
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setNotifications((prev) => [newItem, ...prev.slice(0, 29)]);
+    if ("serviceWorker" in navigator && Notification.permission === "granted") {
+      navigator.serviceWorker.ready
+        .then((reg) =>
+          reg.showNotification(title, {
+            body,
+            icon: "/icon-192.png",
+            badge: "/icon-192.png",
+          })
+        )
+        .catch(() => {});
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => n.id !== lastSeenNotifId).length > 0 && lastSeenNotifId !== notifications.slice(0, 1).shift()?.id
+    ? Math.max(1, notifications.findIndex((n) => n.id === lastSeenNotifId) === -1 ? notifications.length : notifications.findIndex((n) => n.id === lastSeenNotifId))
+    : 0;
 
   const handleLogout = () => {
     setCurrentUserEmail(null);
@@ -442,6 +493,14 @@ export function App() {
         <h1 className="text-xl font-black">U.K FOOTBALL INSIGHT</h1>
         <p className="text-xs text-slate-300 max-w-md leading-relaxed">{settings.maintenanceMessage}</p>
         <button onClick={() => setShowAuthModal(true)} className="text-xs text-slate-400 hover:text-white underline flex items-center gap-1 pt-4"><LogIn className="w-3.5 h-3.5" /><span>Admin Desk Access</span></button>
+        {showNotificationsModal && (
+          <NotificationsModal
+            notifications={notifications}
+            onClose={() => setShowNotificationsModal(false)}
+            onEnablePush={handleRequestNotifications}
+            pushGranted={notificationPermission === "granted"}
+          />
+        )}
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
       </div>
     );
@@ -479,6 +538,14 @@ export function App() {
         onLogout={handleLogout}
         onInstallApp={handleInstallApp}
         onRequestNotifications={handleRequestNotifications}
+        unreadCount={unreadCount}
+        onOpenNotifications={() => {
+          setShowNotificationsModal(true);
+          if (notifications.slice(0, 1).shift()?.id) {
+            setLastSeenNotifId(notifications.slice(0, 1).shift()!.id);
+            localStorage.setItem("ukffi_last_seen_notif", JSON.stringify(notifications.slice(0, 1).shift()!.id));
+          }
+        }}
       >
         {activeTab === 'HOME' && (
           <HomeView
@@ -546,6 +613,7 @@ export function App() {
             users={users}
             setUsers={setUsers}
             setAnnouncements={setAnnouncements}
+            onPushNotification={handlePushNotification}
           />
         )}
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}

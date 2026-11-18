@@ -77,3 +77,11 @@ export interface UserProfile {
   isBanned: boolean;
   isOnline: boolean;
 }
+
+export interface AppNotification {
+  id: string;
+  type: "WIN" | "NEW_MATCH" | "LIVE_UPDATE";
+  title: string;
+  body: string;
+  createdAt: string;
+}

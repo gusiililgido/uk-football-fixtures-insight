@@ -40,6 +40,8 @@ interface LayoutProps {
   onLogout: () => void;
   onInstallApp: () => void;
   onRequestNotifications: () => void;
+  unreadCount: number;
+  onOpenNotifications: () => void;
   children: React.ReactNode;
 }
 
@@ -54,6 +56,8 @@ export const Layout: React.FC<LayoutProps> = ({
   onLogout,
   onInstallApp,
   onRequestNotifications,
+  unreadCount,
+  onOpenNotifications,
   children,
 }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -108,6 +112,18 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={onOpenNotifications}
+              className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 cursor-pointer"
+              aria-label="Live Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
             {currentUserEmail ? (
               <button
                 onClick={onLogout}
