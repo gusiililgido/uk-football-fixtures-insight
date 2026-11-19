@@ -17,7 +17,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   dayDealPrice: '350',
   vipMonthlyPrice: '3500',
   whatsappGroupUrl: 'https://' + '://whatsapp.com',
-  telegramChannelUrl: 'https://' + 't.me/uk_Football_Insights',
+  telegramChannelUrl: "https://t.me/+_yIGcgKWAxZkMzg8",
   supportWhatsappNumber: '254704956915',
   liveTickerText:
     'LIVE INSIGHT: 98% Historical Analysis Accuracy • Watch 20s Sponsored Ad Once Daily for +5 KES Wallet Credit • 18+ Match Analysis Only',

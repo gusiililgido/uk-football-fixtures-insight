@@ -242,6 +242,7 @@ export function App() {
           ...prev,
           ...cSettings,
           whatsappGroupUrl: validWa,
+          telegramChannelUrl: cSettings.telegramChannelUrl && cSettings.telegramChannelUrl.includes("+_yIGcgKWAxZkMzg8") ? cSettings.telegramChannelUrl : "https://t.me/+_yIGcgKWAxZkMzg8",
           telegramBotToken: cSettings.telegramBotToken?.trim() || "9235004140:AAFQnk7qv6ABm9aIRXiHbrtOcUcnGnYcDiY",
           forceTelegramJoin: cSettings.forceTelegramJoin !== undefined ? cSettings.forceTelegramJoin : true,
         }));
