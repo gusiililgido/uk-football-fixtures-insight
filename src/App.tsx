@@ -236,7 +236,12 @@ export function App() {
           cSettings.whatsappGroupUrl.includes('://whatsapp.com')
             ? cSettings.whatsappGroupUrl
             : 'https://' + '://whatsapp.comEDMcQr54KTW7D2KqrqiMkI';
-        setSettings((prev) => ({ ...prev, ...cSettings, whatsappGroupUrl: validWa }));
+        setSettings((prev) => ({
+          ...prev,
+          ...cSettings,
+          whatsappGroupUrl: validWa,
+          telegramBotToken: cSettings.telegramBotToken?.trim() || "9235004140:AAFQnk7qv6ABm9aIRXiHbrtOcUcnGnYcDiY",
+        }));
       }
       if (cSpotlight) setSpotlight(cSpotlight);
       if (cHomePosts) setHomePosts(cHomePosts);

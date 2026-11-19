@@ -24,7 +24,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   maintenanceMode: false,
   screenshotProtection: true,
   forceTelegramJoin: true,
-  telegramBotToken: '',
+  telegramBotToken: "9235004140:AAFQnk7qv6ABm9aIRXiHbrtOcUcnGnYcDiY",
   maintenanceMessage:
     'We are currently updating today’s Premier League & EFL statistical models. Back live in a few minutes!',
   adsEnabled: true,
