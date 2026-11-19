@@ -55,6 +55,8 @@ export interface AppSettings {
   liveTickerText: string;
   maintenanceMode: boolean;
   screenshotProtection: boolean;
+  forceTelegramJoin: boolean;
+  telegramBotToken: string;
   maintenanceMessage: string;
   adsEnabled: boolean;
   freeTipsAdLock: boolean;

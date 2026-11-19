@@ -29,6 +29,7 @@ import { FAQView } from './components/FAQView';
 import { SplashScreen } from './components/SplashScreen';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { NotificationsModal, resolveNotificationText } from './components/NotificationsModal';
+import { TelegramGateModal } from './components/TelegramGateModal';
 import {
   fetchCloudState,
   isSupabaseConfigured,
@@ -111,6 +112,9 @@ export function App() {
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [lastSeenNotifId, setLastSeenNotifId] = useState<string>(() =>
     loadSaved("ukffi_last_seen_notif", "")
+  );
+  const [telegramVerified, setTelegramVerified] = useState<boolean>(() =>
+    loadSaved("ukffi_telegram_verified", false)
   );
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [paymentModalTier, setPaymentModalTier] = useState<Exclude<
@@ -499,6 +503,15 @@ export function App() {
         <h1 className="text-xl font-black">U.K FOOTBALL INSIGHT</h1>
         <p className="text-xs text-slate-300 max-w-md leading-relaxed">{settings.maintenanceMessage}</p>
         <button onClick={() => setShowAuthModal(true)} className="text-xs text-slate-400 hover:text-white underline flex items-center gap-1 pt-4"><LogIn className="w-3.5 h-3.5" /><span>Admin Desk Access</span></button>
+        {settings.forceTelegramJoin && !telegramVerified && !isAdmin && (
+          <TelegramGateModal
+            settings={settings}
+            onVerified={() => {
+              setTelegramVerified(true);
+              localStorage.setItem("ukffi_telegram_verified", JSON.stringify(true));
+            }}
+          />
+        )}
         {showNotificationsModal && (
           <NotificationsModal
             notifications={notifications}

@@ -23,6 +23,8 @@ export const INITIAL_SETTINGS: AppSettings = {
     'LIVE INSIGHT: 98% Historical Analysis Accuracy • Watch 20s Sponsored Ad Once Daily for +5 KES Wallet Credit • 18+ Match Analysis Only',
   maintenanceMode: false,
   screenshotProtection: true,
+  forceTelegramJoin: true,
+  telegramBotToken: '',
   maintenanceMessage:
     'We are currently updating today’s Premier League & EFL statistical models. Back live in a few minutes!',
   adsEnabled: true,

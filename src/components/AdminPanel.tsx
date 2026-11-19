@@ -794,6 +794,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-white rounded-2xl border-2 border-emerald-500/40 p-4 shadow-sm space-y-2.5">
             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5"><PlayCircle className="w-4 h-4" /><span>Security, Google AdSense &amp; Daily 5 KES Controls</span></h3>
             <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <span className="text-xs font-bold text-slate-700">Force Join Telegram Channel Gate (30s)</span>
+              <button
+                onClick={() => setSettings((p) => ({ ...p, forceTelegramJoin: !p.forceTelegramJoin }))}
+                className={`text-[11px] font-black px-3 py-1 rounded-full cursor-pointer ${
+                  settings.forceTelegramJoin ? "bg-blue-600 text-white" : "bg-slate-300 text-slate-700"
+                }`}
+              >
+                {settings.forceTelegramJoin ? "REQUIRED (ON)" : "OFF"}
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={settings.telegramBotToken}
+              onChange={(e) => setSettings((p) => ({ ...p, telegramBotToken: e.target.value }))}
+              placeholder="Optional Telegram Bot Token (for live member check)"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+            />
+
+            <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <span className="text-xs font-bold text-slate-700">Screenshot &amp; Screen-Capture Block</span>
               <button onClick={() => setSettings((p) => ({ ...p, screenshotProtection: !p.screenshotProtection }))} className={`text-[11px] font-black px-3 py-1 rounded-full cursor-pointer ${settings.screenshotProtection ? 'bg-red-600 text-white' : 'bg-slate-300 text-slate-700'}`}>{settings.screenshotProtection ? 'PROTECTED (ON)' : 'OFF'}</button>
             </div>
