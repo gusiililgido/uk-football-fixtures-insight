@@ -113,9 +113,11 @@ export function App() {
   const [lastSeenNotifId, setLastSeenNotifId] = useState<string>(() =>
     loadSaved("ukffi_last_seen_notif", "")
   );
-  const [telegramVerified, setTelegramVerified] = useState<boolean>(() =>
-    loadSaved("ukffi_telegram_verified", false)
+  const [telegramVerifiedMap, setTelegramVerifiedMap] = useState<Record<string, boolean>>(() =>
+    loadSaved("ukffi_telegram_verified_map", {})
   );
+  const activeIdentityKey = currentUserEmail ? currentUserEmail.trim().toLowerCase() : "guest";
+  const telegramVerified = Boolean(telegramVerifiedMap[activeIdentityKey]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [paymentModalTier, setPaymentModalTier] = useState<Exclude<
     PredictionTier,
@@ -512,8 +514,11 @@ export function App() {
           <TelegramGateModal
             settings={settings}
             onVerified={() => {
-              setTelegramVerified(true);
-              localStorage.setItem("ukffi_telegram_verified", JSON.stringify(true));
+              setTelegramVerifiedMap((prev) => {
+                const updated = { ...prev, [activeIdentityKey]: true };
+                localStorage.setItem("ukffi_telegram_verified_map", JSON.stringify(updated));
+                return updated;
+              });
             }}
           />
         )}
