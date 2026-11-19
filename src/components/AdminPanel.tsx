@@ -43,7 +43,7 @@ interface AdminPanelProps {
   users: UserProfile[];
   setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
   setAnnouncements: React.Dispatch<React.SetStateAction<string[]>>;
-  onPushNotification: (type: AppNotification["type"], title: string, body: string) => void;
+  onPushNotification: (type: AppNotification["type"], title: string, body: string, targetTier?: "ALL" | "DAY_DEAL" | "VIP_MONTHLY", publicTeaserBody?: string) => void;
 }
 
 type AdminSubTab = 'MATCHES' | 'SPOTLIGHT' | 'USERS' | 'SYSTEM';
@@ -104,7 +104,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [postImageUrl, setPostImageUrl] = useState('');
 
   const [newAnnouncement, setNewAnnouncement] = useState('');
-  const [boomMessage, setBoomMessage] = useState('BOOM! Today’s Free Bet WON 3/3! Congratulations to everyone who followed! 🎉🔥');
+  const [boomMessage, setBoomMessage] = useState("BOOM! Today’s Free Bet WON 3/3! Congratulations to everyone who followed! 🎉🔥");
+  const [customNotifTitle, setCustomNotifTitle] = useState("");
+  const [customNotifBody, setCustomNotifBody] = useState("");
+  const [customNotifTier, setCustomNotifTier] = useState<"ALL" | "DAY_DEAL" | "VIP_MONTHLY">("ALL");
 
   const notify = (msg: string) => {
     setToast(msg);
@@ -171,10 +174,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setOdds('');
     setAnalysisNote('');
     setBetslipImageUrl('');
+    const targetAudience = tier === "FREE" ? "ALL" : tier;
+    const teaser =
+      tier === "VIP_MONTHLY"
+        ? "VIP Monthly (70–100 Odds) slip has been updated! Upgrade to VIP Monthly to view today’s exclusive match."
+        : tier === "DAY_DEAL"
+        ? "Day Deal (20–70 Odds) slip has been updated! Unlock Day Deal to view today’s exclusive match."
+        : undefined;
     onPushNotification(
       "NEW_MATCH",
-      "NEW " + tier + " MATCH ADDED!",
-      homeTeam.trim() + " vs " + awayTeam.trim() + " (" + pick.trim() + " @ " + odds.trim() + ") is now live!"
+      "NEW " + (tier === "VIP_MONTHLY" ? "VIP MONTHLY" : tier === "DAY_DEAL" ? "DAY DEAL" : "FREE") + " UPDATE!",
+      homeTeam.trim() + " vs " + awayTeam.trim() + " (" + pick.trim() + " @ " + odds.trim() + ") is now live!",
+      targetAudience,
+      teaser
     );
     notify("Match analysis published & users notified!");
   };
@@ -182,18 +194,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleStatusChange = (id: string, status: MatchStatus) => {
     const target = predictions.find((p) => p.id === id);
     setPredictions((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    const targetAudience = target?.tier === "FREE" ? "ALL" : target?.tier;
     if (status === "WON" && target) {
       const scoreTxt = target.finalScore ? " (" + target.finalScore + ")" : "";
+      const winTeaser =
+        target.tier === "VIP_MONTHLY"
+          ? "BOOM! Our VIP Monthly (70–100 Odds) slip WON! Upgrade to VIP Monthly to access upcoming elite slips! 🏆🔥"
+          : target.tier === "DAY_DEAL"
+          ? "BOOM! Our Day Deal (20–70 Odds) slip WON! Unlock Day Deal to access today’s curated slip! 🎉🔥"
+          : undefined;
       onPushNotification(
         "WIN",
-        "BOOM! MATCH WON! CONGRATULATIONS!",
-        target.homeTeam + " vs " + target.awayTeam + scoreTxt + " — " + target.pick + " WON! 🎉🔥"
+        "BOOM! " + (target.tier === "FREE" ? "FREE" : target.tier === "DAY_DEAL" ? "DAY DEAL" : "VIP") + " MATCH WON!",
+        target.homeTeam + " vs " + target.awayTeam + scoreTxt + " — " + target.pick + " WON! 🎉🔥",
+        targetAudience,
+        winTeaser
       );
     } else if (target) {
+      const statusTeaser =
+        target.tier !== "FREE"
+          ? "Live update posted on " + (target.tier === "VIP_MONTHLY" ? "VIP Monthly" : "Day Deal") + " slip."
+          : undefined;
       onPushNotification(
         "LIVE_UPDATE",
         "LIVE MATCH STATUS: " + status,
-        target.homeTeam + " vs " + target.awayTeam + " marked as " + status + "."
+        target.homeTeam + " vs " + target.awayTeam + " marked as " + status + ".",
+        targetAudience,
+        statusTeaser
       );
     }
     notify("Marked match as " + status + " & notified users!");
@@ -410,6 +437,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 rounded-xl shrink-0 cursor-pointer"
               >
                 Send BOOM!
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border-2 border-blue-600/20 p-4 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                <Megaphone className="w-4 h-4" /> Send Custom Push Notification
+              </span>
+              <select
+                value={customNotifTier}
+                onChange={(e) => setCustomNotifTier(e.target.value as "ALL" | "DAY_DEAL" | "VIP_MONTHLY")}
+                className="text-[11px] font-extrabold bg-slate-100 border border-slate-300 rounded-lg px-2 py-1"
+              >
+                <option value="ALL">All Users (Public)</option>
+                <option value="DAY_DEAL">Day Deal Only (Teaser for Free)</option>
+                <option value="VIP_MONTHLY">VIP Monthly Only (Teaser for Free)</option>
+              </select>
+            </div>
+            <input
+              type="text"
+              value={customNotifTitle}
+              onChange={(e) => setCustomNotifTitle(e.target.value)}
+              placeholder="Notification Title (e.g. VIP SLIP UPDATED!)"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customNotifBody}
+                onChange={(e) => setCustomNotifBody(e.target.value)}
+                placeholder="Write notification message..."
+                className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-xl"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!customNotifBody.trim()) return;
+                  const title = customNotifTitle.trim() || "MATCHDAY DESK ALERT";
+                  onPushNotification(
+                    "LIVE_UPDATE",
+                    title,
+                    customNotifBody.trim(),
+                    customNotifTier
+                  );
+                  setCustomNotifTitle("");
+                  setCustomNotifBody("");
+                  notify("Custom notification sent to users!");
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-4 rounded-xl shrink-0 cursor-pointer"
+              >
+                Send
               </button>
             </div>
           </div>

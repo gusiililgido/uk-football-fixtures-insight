@@ -83,5 +83,7 @@ export interface AppNotification {
   type: "WIN" | "NEW_MATCH" | "LIVE_UPDATE";
   title: string;
   body: string;
+  targetTier?: "ALL" | "DAY_DEAL" | "VIP_MONTHLY";
+  publicTeaserBody?: string;
   createdAt: string;
 }

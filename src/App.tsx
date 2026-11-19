@@ -28,7 +28,7 @@ import { LegalHub } from './components/LegalHub';
 import { FAQView } from './components/FAQView';
 import { SplashScreen } from './components/SplashScreen';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
-import { NotificationsModal } from './components/NotificationsModal';
+import { NotificationsModal, resolveNotificationText } from './components/NotificationsModal';
 import {
   fetchCloudState,
   isSupabaseConfigured,
@@ -372,21 +372,27 @@ export function App() {
   const handlePushNotification = (
     type: AppNotification["type"],
     title: string,
-    body: string
+    body: string,
+    targetTier: "ALL" | "DAY_DEAL" | "VIP_MONTHLY" = "ALL",
+    publicTeaserBody?: string
   ) => {
     const newItem: AppNotification = {
       id: "notif-" + Date.now(),
       type,
       title,
       body,
+      targetTier,
+      publicTeaserBody,
       createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     setNotifications((prev) => [newItem, ...prev.slice(0, 29)]);
+    const activeTier = currentUser?.tier || "FREE";
+    const resolved = resolveNotificationText(newItem, activeTier, isAdmin);
     if ("serviceWorker" in navigator && Notification.permission === "granted") {
       navigator.serviceWorker.ready
         .then((reg) =>
           reg.showNotification(title, {
-            body,
+            body: resolved.text,
             icon: "/icon-192.png",
             badge: "/icon-192.png",
           })
@@ -496,6 +502,9 @@ export function App() {
         {showNotificationsModal && (
           <NotificationsModal
             notifications={notifications}
+            userTier={currentUser?.tier || "FREE"}
+            isAdmin={isAdmin}
+            onUpgradeTier={(tier) => setPaymentModalTier(tier)}
             onClose={() => setShowNotificationsModal(false)}
             onEnablePush={handleRequestNotifications}
             pushGranted={notificationPermission === "granted"}
