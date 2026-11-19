@@ -243,6 +243,7 @@ export function App() {
           ...cSettings,
           whatsappGroupUrl: validWa,
           telegramBotToken: cSettings.telegramBotToken?.trim() || "9235004140:AAFQnk7qv6ABm9aIRXiHbrtOcUcnGnYcDiY",
+          forceTelegramJoin: cSettings.forceTelegramJoin !== undefined ? cSettings.forceTelegramJoin : true,
         }));
       }
       if (cSpotlight) setSpotlight(cSpotlight);
