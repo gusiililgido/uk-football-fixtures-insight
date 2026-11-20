@@ -1,12 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  'https://supabase.co';
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  'sb_publishable_0W5OIM540zC58U8y8P_62w_8Q--J3q3';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
 export async function fetchCloudState<T>(key: string): Promise<T | null> {
@@ -14,26 +18,32 @@ export async function fetchCloudState<T>(key: string): Promise<T | null> {
   try {
     const { data, error } = await supabase
       .from('app_state')
-      .select('payload')
-      .eq('id', key)
+      .select('value')
+      .eq('key', key)
       .maybeSingle();
 
     if (error || !data) return null;
-    return data.payload as T;
+    return data.value as T;
   } catch {
     return null;
   }
 }
 
-export async function saveCloudState<T>(key: string, payload: T): Promise<void> {
-  if (!supabase) return;
+export async function saveCloudState<T>(
+  key: string,
+  value: T
+): Promise<{ ok: boolean; errorMsg?: string }> {
+  if (!supabase) return { ok: false, errorMsg: 'Supabase not configured' };
   try {
-    await supabase.from('app_state').upsert({
-      id: key,
-      payload,
-      updated_at: new Date().toISOString(),
-    });
-  } catch {
-    // Keep local state if temporarily offline
+    const { error } = await supabase
+      .from('app_state')
+      .upsert(
+        { key, value, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    if (error) return { ok: false, errorMsg: error.message };
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, errorMsg: err?.message || 'Network error' };
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Lock,
   CheckCircle2,
@@ -17,9 +17,12 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Trophy,
+  Radio,
+  Hourglass,
 } from 'lucide-react';
 import { AppSettings, MatchStatus, Prediction, PredictionTier } from '../types';
 import { GoogleAdBanner } from './GoogleAdBanner';
+import { getLiveMatchTiming } from '../utils/matchClock';
 
 interface PredictionsViewProps {
   tier: PredictionTier;
@@ -47,12 +50,21 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
   const todayIso = new Date().toISOString().slice(0, 10);
   const yesterdayIso = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  // 'ALL' shows all dates; 'YYYY-MM-DD' filters by specific calendar date
   const [selectedDate, setSelectedDate] = useState<string>('ALL');
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const ticker = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(ticker);
+  }, []);
 
   const tierAllDates = predictions
     .filter((p) => p.tier === tier)
-    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+    .sort((a, b) => {
+      const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+      if (pinDiff !== 0) return pinDiff;
+      return b.matchDate.localeCompare(a.matchDate);
+    });
 
   const tierPredictions =
     selectedDate === 'ALL'
@@ -95,7 +107,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       badgeColor: 'bg-emerald-600',
       benefits: [
         'Updated every morning with verified U.K. & European fixtures',
-        '2 to 5 combined odds focused on high-probability outcomes',
+        'Live kickoff countdown & 90-minute match progress tracker',
         'Full calendar history archive to verify yesterday & past results',
       ],
     },
@@ -106,7 +118,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       badgeColor: 'bg-blue-600',
       benefits: [
         'High-value 20 to 70 odds curated daily accumulator with betslip preview',
-        'Includes full tactical breakdown & SofaScore result verification',
+        'Includes live 90-min match clock & SofaScore result verification',
         'Unlock via M-Pesa/Airtel OR redeem Earned Ad Wallet Balance',
       ],
     },
@@ -299,7 +311,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           {tierPredictions.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center text-xs text-slate-500">
               No {sectionMeta.title} records found for <strong>{selectedDate}</strong>. Tap <strong>All</strong> or select another calendar date!
@@ -309,6 +321,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
               <PredictionCard
                 key={item.id}
                 item={item}
+                nowMs={nowMs}
                 onPreviewImage={onPreviewImage}
               />
             ))
@@ -318,133 +331,68 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
     </div>
   );
 };
+
 const PredictionCard: React.FC<{
   item: Prediction;
+  nowMs: number;
   onPreviewImage: (url: string, title: string, subtitle?: string) => void;
-}> = ({ item, onPreviewImage }) => {
-  const statusStyles: Record<
-    MatchStatus,
-    { bg: string; text: string; icon: React.ReactNode }
-  > = {
-    WON: {
-      bg: 'bg-emerald-100 border-emerald-300',
-      text: 'text-emerald-800',
-      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />,
-    },
-    LOST: {
-      bg: 'bg-red-100 border-red-300',
-      text: 'text-red-800',
-      icon: <XCircle className="w-3.5 h-3.5 text-red-600" />,
-    },
-    POSTPONED: {
-      bg: 'bg-amber-100 border-amber-300',
-      text: 'text-amber-800',
-      icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />,
-    },
-    PENDING: {
-      bg: 'bg-blue-100 border-blue-300',
-      text: 'text-blue-800',
-      icon: <Clock className="w-3.5 h-3.5 text-blue-600" />,
-    },
+}> = ({ item, nowMs, onPreviewImage }) => {
+  const timing = getLiveMatchTiming(item.matchDate, item.kickoffTime, item.status, nowMs);
+  const statusStyles: Record<MatchStatus, { bg: string; text: string; icon: React.ReactNode }> = {
+    WON: { bg: "bg-emerald-100 border-emerald-300", text: "text-emerald-800", icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> },
+    LOST: { bg: "bg-red-100 border-red-300", text: "text-red-800", icon: <XCircle className="w-3.5 h-3.5 text-red-600" /> },
+    POSTPONED: { bg: "bg-amber-100 border-amber-300", text: "text-amber-800", icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> },
+    PENDING: { bg: "bg-blue-100 border-blue-300", text: "text-blue-800", icon: <Clock className="w-3.5 h-3.5 text-blue-600" /> },
   };
-
   const badge = statusStyles[item.status];
+  const homeInitial = (item.homeTeam || "H").slice(0, 2).toUpperCase();
+  const awayInitial = (item.awayTeam || "A").slice(0, 2).toUpperCase();
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:border-blue-400 transition">
-      <div className="flex items-center justify-between gap-2 text-xs mb-2">
-        <div className="flex items-center gap-1.5 font-bold text-slate-600">
-          {item.pinned && <Pin className="w-3.5 h-3.5 text-red-600 fill-red-600" />}
-          <span>{item.league}</span>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden hover:border-blue-500 transition">
+      <div className="bg-[#0B0F19] text-white px-4 py-2 flex items-center justify-between gap-2 text-[11px]">
+        <div className="flex items-center gap-1.5 font-bold text-slate-200 truncate">
+          {item.pinned && <Pin className="w-3.5 h-3.5 text-red-500 fill-red-500 shrink-0" />}
+          <span className="truncate">{item.league}</span>
         </div>
-
+        <span className="text-[10px] font-extrabold text-blue-300 shrink-0">{item.matchDate} • {item.kickoffTime}</span>
+      </div>
+      <div className={`px-4 py-2 flex items-center justify-between gap-2 text-xs font-black border-b ${timing.phase === "LIVE_90" ? "bg-red-600 text-white border-red-700" : timing.phase === "ENDED_WAIT_ADMIN" ? "bg-amber-500 text-[#0B0F19] border-amber-600" : timing.phase === "UPCOMING" ? "bg-blue-50 text-blue-900 border-blue-200" : item.status === "WON" ? "bg-emerald-600 text-white border-emerald-700" : "bg-slate-100 text-slate-700 border-slate-200"}`}>
         <div className="flex items-center gap-1.5">
-          {item.finalScore && (
-            <span className="bg-[#0B0F19] text-amber-400 text-[11px] font-black px-2.5 py-0.5 rounded-full">
-              {item.finalScore}
-            </span>
-          )}
-          <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${badge.bg} ${badge.text}`}
-          >
-            {badge.icon}
-            <span>{item.status}</span>
-          </span>
+          {timing.phase === "LIVE_90" ? <Radio className="w-4 h-4 animate-pulse" /> : timing.phase === "ENDED_WAIT_ADMIN" ? <Hourglass className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+          <span className="tracking-wide">{timing.label}</span>
         </div>
+        <span className="text-[10px] font-bold opacity-90">{timing.subLabel}</span>
       </div>
-
-      <div className="flex items-center justify-between gap-2 py-1">
-        <div>
-          <h4 className="text-base font-black text-[#0B0F19]">
-            {item.homeTeam} <span className="text-red-600 font-bold">vs</span> {item.awayTeam}
-          </h4>
-          <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-            {item.matchDate} • Kickoff: {item.kickoffTime}
+      {timing.phase === "LIVE_90" && typeof timing.progressPercent === "number" && (
+        <div className="w-full h-1.5 bg-red-950"><div className="h-full bg-amber-300 transition-all duration-700" style={{ width: `${timing.progressPercent}%` }} /></div>
+      )}
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-blue-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">{homeInitial}</span><span className="text-sm sm:text-base font-black text-[#0B0F19] truncate">{item.homeTeam}</span></div>
+            <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-slate-800 text-white text-[10px] font-black flex items-center justify-center shrink-0">{awayInitial}</span><span className="text-sm sm:text-base font-black text-[#0B0F19] truncate">{item.awayTeam}</span></div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="bg-[#0B0F19] text-white px-3 py-1.5 rounded-xl text-center min-w-[68px]"><div className="text-[9px] uppercase tracking-wider text-blue-300 font-bold">Odds</div><div className="text-sm font-black text-amber-400">{item.odds}</div></div>
+            <div className="flex items-center gap-1">
+              {item.finalScore && <span className="bg-slate-900 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">{item.finalScore}</span>}
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badge.bg} ${badge.text}`}>{badge.icon}<span>{item.status}</span></span>
+            </div>
           </div>
         </div>
-        <div className="text-right shrink-0 bg-[#0B0F19] text-white px-3 py-1.5 rounded-xl">
-          <div className="text-[9px] uppercase tracking-wider text-blue-300 font-bold">
-            Odds
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
+          <div><span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 block">Expert Selection</span><span className="text-xs sm:text-sm font-black text-[#0B0F19]">{item.pick}</span></div>
+          <span className="inline-flex items-center gap-1 bg-blue-700 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg shrink-0"><Flame className="w-3 h-3 text-amber-300" />{item.confidence}</span>
+        </div>
+        {item.analysisNote && <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 rounded-xl p-2.5 border border-slate-100"><strong className="text-[#0B0F19]">Desk Insight:</strong> {item.analysisNote}</p>}
+        {(item.betslipImageUrl || item.resultProofUrl) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {item.betslipImageUrl && <button onClick={() => onPreviewImage(item.betslipImageUrl!, `Betslip Preview: ${item.homeTeam} vs ${item.awayTeam}`, `${item.pick} • Odds: ${item.odds}`)} className="flex items-center justify-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-800 border border-blue-300 font-extrabold text-xs py-2.5 px-3 rounded-xl transition cursor-pointer"><ImageIcon className="w-4 h-4 text-blue-600" /><span>View Betslip Image</span></button>}
+            {item.resultProofUrl && <button onClick={() => onPreviewImage(item.resultProofUrl!, `Verified Result Proof: ${item.homeTeam} vs ${item.awayTeam}`, `${item.status}${item.finalScore ? ` (${item.finalScore})` : ""} • SofaScore / LiveScore Proof`)} className="flex items-center justify-center gap-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-800 border border-emerald-300 font-extrabold text-xs py-2.5 px-3 rounded-xl transition cursor-pointer"><Trophy className="w-4 h-4 text-emerald-600" /><span>View Result Proof (SofaScore)</span></button>}
           </div>
-          <div className="text-sm font-black text-amber-400">{item.odds}</div>
-        </div>
+        )}
       </div>
-
-      <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
-        <div>
-          <span className="text-[10px] font-bold uppercase text-blue-700 block">
-            Analysed Selection
-          </span>
-          <span className="text-xs sm:text-sm font-black text-[#0B0F19]">{item.pick}</span>
-        </div>
-        <span className="inline-flex items-center gap-1 bg-blue-700 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg shrink-0">
-          <Flame className="w-3 h-3 text-amber-300" />
-          {item.confidence}
-        </span>
-      </div>
-
-      {item.analysisNote && (
-        <p className="text-xs text-slate-600 mt-2.5 leading-relaxed">
-          <strong>Insight:</strong> {item.analysisNote}
-        </p>
-      )}
-
-      {/* Optional Betslip Preview & SofaScore / LiveScore Result Proof Buttons */}
-      {(item.betslipImageUrl || item.resultProofUrl) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-100">
-          {item.betslipImageUrl && (
-            <button
-              onClick={() =>
-                onPreviewImage(
-                  item.betslipImageUrl!,
-                  `Betslip Preview: ${item.homeTeam} vs ${item.awayTeam}`,
-                  `${item.pick} • Odds: ${item.odds}`
-                )
-              }
-              className="flex items-center justify-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-800 border border-blue-300 font-extrabold text-xs py-2 px-3 rounded-xl transition cursor-pointer"
-            >
-              <ImageIcon className="w-4 h-4 text-blue-600" />
-              <span>View Betslip Image</span>
-            </button>
-          )}
-
-          {item.resultProofUrl && (
-            <button
-              onClick={() =>
-                onPreviewImage(
-                  item.resultProofUrl!,
-                  `Verified Result Proof: ${item.homeTeam} vs ${item.awayTeam}`,
-                  `${item.status}${item.finalScore ? ` (${item.finalScore})` : ''} • SofaScore / LiveScore Proof`
-                )
-              }
-              className="flex items-center justify-center gap-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-800 border border-emerald-300 font-extrabold text-xs py-2 px-3 rounded-xl transition cursor-pointer"
-            >
-              <Trophy className="w-4 h-4 text-emerald-600" />
-              <span>View Result Proof (SofaScore)</span>
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 };

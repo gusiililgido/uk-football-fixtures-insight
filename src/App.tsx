@@ -133,6 +133,7 @@ export function App() {
   } | null>(null);
 
   const [privacyShieldActive, setPrivacyShieldActive] = useState(false);
+  const cloudSyncOk = true;
   const [installPromptEvent, setInstallPromptEvent] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<
@@ -648,6 +649,7 @@ export function App() {
             setUsers={setUsers}
             setAnnouncements={setAnnouncements}
             onPushNotification={handlePushNotification}
+            cloudSyncOk={cloudSyncOk}
           />
         )}
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
