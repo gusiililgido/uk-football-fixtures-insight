@@ -282,8 +282,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ? '⚠️ <b>DAILY FREE MATCH POSTPONED</b> ⏳'
             : '🔄 <b>DAILY FREE STATUS UPDATED: PENDING</b> ⏳';
 
+        const freeProofPhoto = status === 'WON' ? target.resultProofUrl || target.betslipImageUrl : undefined;
         await broadcastTelegram(
-          `${statusHeadline}\n\n⚽ <b>${target.homeTeam}${target.awayTeam ? ` vs ${target.awayTeam}` : ''}${scoreTxt}</b>\n🎯 Selection: <b>${target.pick}</b>${target.odds ? ` @ <b>${target.odds}</b>` : ''}\n📌 Settled Status: <b>${status}</b>\n\n📲 View full SofaScore proof &amp; today’s next slip inside the app!`
+          `${statusHeadline}\n━━━━━━━━━━━━━━━━━━\n⚽ <b>${target.homeTeam}${target.awayTeam ? ` vs ${target.awayTeam}` : ''}${scoreTxt}</b>\n🎯 Free Pick: <b>${target.pick}</b>${target.odds ? ` @ <b>${target.odds}</b>` : ''}\n📌 Status: <b>${status}</b> (FREE TIP)\n━━━━━━━━━━━━━━━━━━\n📲 View full SofaScore proof &amp; today’s next slip inside the app!`,
+          freeProofPhoto
         );
       } else if (status === 'WON') {
         const vipName = target.tier === 'VIP_MONTHLY' ? 'VIP MONTHLY (70–100 ODDS)' : 'DAY DEAL (20–70 ODDS)';
