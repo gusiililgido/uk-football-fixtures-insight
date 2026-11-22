@@ -334,8 +334,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSaveSystemSettings = async () => {
-    setSettings(draftSettings);
-    await syncKeyNow('settings', draftSettings, 'All System Settings saved & synced live!');
+    const cleanedWa = (draftSettings.whatsappGroupUrl || '')
+      .replace('https://://', 'https://').replace('http://://', 'http://');
+    const finalSettings = { ...draftSettings, whatsappGroupUrl: cleanedWa };
+    setDraftSettings(finalSettings);
+    setSettings(finalSettings);
+    await syncKeyNow('settings', finalSettings, 'All System Settings saved & synced live!');
   };
 
   const handleGrantTier = async (email: string, newTier: PredictionTier) => {
