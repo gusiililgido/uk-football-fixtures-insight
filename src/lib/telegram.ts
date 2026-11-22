@@ -4,6 +4,7 @@ export async function postToTelegramChannel(params: {
   channelUrl?: string;
   text: string;
   appUrl?: string;
+  photoDataUrl?: string;
 }): Promise<{ ok: boolean; errorMsg?: string }> {
   const token = (params.botToken || '').trim();
   if (!token) return { ok: false, errorMsg: 'Telegram Bot Token is empty.' };
@@ -31,6 +32,7 @@ export async function postToTelegramChannel(params: {
         chatId,
         text: params.text,
         appUrl: params.appUrl,
+        photoDataUrl: params.photoDataUrl,
       }),
     });
     const contentType = relayRes.headers.get('content-type') || '';

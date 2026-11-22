@@ -155,7 +155,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setToast(''), duration);
   };
 
-  const broadcastTelegram = async (messageHtml: string) => {
+  const broadcastTelegram = async (messageHtml: string, photoDataUrl?: string) => {
     if (settings.autoPostTelegram === false) return;
     await postToTelegramChannel({
       botToken: settings.telegramBotToken,
@@ -163,6 +163,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       channelUrl: settings.telegramChannelUrl,
       text: messageHtml,
       appUrl: window.location.origin,
+      photoDataUrl,
     });
   };
 
@@ -286,8 +287,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         );
       } else if (status === 'WON') {
         const vipName = target.tier === 'VIP_MONTHLY' ? 'VIP MONTHLY (70–100 ODDS)' : 'DAY DEAL (20–70 ODDS)';
+        const proofPhoto = target.resultProofUrl || target.betslipImageUrl;
+        const matchSummary =
+          target.homeTeam && target.homeTeam !== 'Verified Betslip'
+            ? `\n⚽ <b>${target.homeTeam}${target.awayTeam ? ` vs ${target.awayTeam}` : ''}${scoreTxt}</b>\n✅ Selection: <b>${target.pick}</b>${target.odds ? ` @ <b>${target.odds}</b>` : ''}`
+            : scoreTxt
+            ? `\n📊 Final Result: <b>${scoreTxt}</b>`
+            : '';
         await broadcastTelegram(
-          `🎉🔥 <b>BOOOOOOM! ${vipName} WON!</b> 🏆💰\n\n✅ Another verified slip settled as <b>WON${scoreTxt}</b> for our authorized subscribers!\n🔒 <i>Paid slip details remain protected for VIP members.</i>\n\n💎 <b>Subscribe to Day Deal or VIP Monthly inside the app to access our next winning slip immediately!</b>`
+          `🎉🔥 <b>BOOOOOOM! ${vipName} WON!</b> 🏆💰${matchSummary}\n\n✅ Verified winning slip settled as <b>WON</b> for our authorized subscribers!\n\n💎 <b>Subscribe to Day Deal or VIP Monthly inside the app to access our next winning slip immediately!</b>`,
+          proofPhoto
         );
       }
     }
