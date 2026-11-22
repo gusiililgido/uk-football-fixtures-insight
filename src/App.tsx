@@ -1,3 +1,4 @@
+import { TelegramJoinModal } from './components/TelegramJoinModal';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ADMIN_EMAIL,
@@ -120,6 +121,7 @@ export function App() {
   const telegramVerified = Boolean(telegramVerifiedMap[activeIdentityKey]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authContextBanner, setAuthContextBanner] = useState("");
+  const [showTelegramGate, setShowTelegramGate] = useState(false);
   const [paymentModalTier, setPaymentModalTier] = useState<Exclude<
     PredictionTier,
     'FREE'
@@ -413,6 +415,7 @@ export function App() {
     setCurrentUserEmail(cleanEmail);
     localStorage.setItem("ukffi_current_email", cleanEmail);
     setShowAuthModal(false); setAuthContextBanner("");
+    if (settings.forceTelegramJoin && localStorage.getItem("ukffi_tg_verified") !== "1") setShowTelegramGate(true);
     return { ok: true };
   };
   const handleLoginUser = (identifier: string, password: string) => {
@@ -560,7 +563,8 @@ export function App() {
             pushGranted={notificationPermission === "granted"}
           />
         )}
-        {showAuthModal && <AuthModal existingUsers={users} onRegister={handleRegisterUser} onLogin={handleLoginUser} contextBanner={authContextBanner} onClose={() => { setShowAuthModal(false); setAuthContextBanner(""); }} />}
+        {showTelegramGate && currentUser && <TelegramJoinModal telegramUrl={settings.telegramChannelUrl} onVerified={() => { localStorage.setItem("ukffi_tg_verified", "1"); setShowTelegramGate(false); }} />}
+      {showAuthModal && <AuthModal existingUsers={users} onRegister={handleRegisterUser} onLogin={handleLoginUser} contextBanner={authContextBanner} onClose={() => { setShowAuthModal(false); setAuthContextBanner(""); }} />}
       </div>
     );
   }

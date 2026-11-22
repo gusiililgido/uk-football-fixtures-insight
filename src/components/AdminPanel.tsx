@@ -114,7 +114,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [odds, setOdds] = useState('');
   const [confidence, setConfidence] = useState('98%');
   const [analysisNote, setAnalysisNote] = useState('');
-  const [betslipImageUrl, setBetslipImageUrl] = useState('');
+  const [betslipImageUrl, setBetslipImageUrl] = useState("");
+  const [initialStatus, setInitialStatus] = useState<MatchStatus>("PENDING");
 
   const [postBadge, setPostBadge] = useState('MATCHDAY UPDATE');
   const [postTitle, setPostTitle] = useState('');
@@ -181,43 +182,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!homeTeam.trim() || !awayTeam.trim() || !pick.trim() || !odds.trim()) return;
+    const hasTextMatch = Boolean(homeTeam.trim() && awayTeam.trim());
+    const hasSlipImage = Boolean(betslipImageUrl);
+    if (!hasTextMatch && !hasSlipImage) {
+      notify("⚠️ Enter match teams OR attach a betslip image first!", 4000);
+      return;
+    }
+
+    const displayHome = homeTeam.trim() || "Verified Betslip";
+    const displayAway = awayTeam.trim() || "";
+    const displayPick = pick.trim() || (hasSlipImage ? "Official Betslip Selection" : "");
+    const displayOdds = odds.trim() || "";
 
     const newMatch: Prediction = {
       id: `match-${Date.now()}`,
       tier,
-      league: league.trim() || 'U.K. Football',
-      homeTeam: homeTeam.trim(),
-      awayTeam: awayTeam.trim(),
-      kickoffTime: kickoffTime.trim() || '20:00 EAT',
+      league: league.trim() || (hasSlipImage && !hasTextMatch ? "Official Verified Betslip" : "U.K. Football"),
+      homeTeam: displayHome,
+      awayTeam: displayAway,
+      kickoffTime: kickoffTime.trim() || "20:00 EAT",
       matchDate: matchDate || todayIso,
-      pick: pick.trim(),
-      odds: odds.trim(),
-      confidence: confidence.trim() || '98%',
+      pick: displayPick,
+      odds: displayOdds,
+      confidence: confidence.trim() || "98%",
       analysisNote: analysisNote.trim(),
       betslipImageUrl: betslipImageUrl || undefined,
-      status: 'PENDING',
+      status: initialStatus,
       pinned: false,
     };
 
     const next = [newMatch, ...predictions];
     setPredictions(next);
 
-    const targetAudience = tier === 'FREE' ? 'ALL' : tier;
+    const targetAudience = tier === "FREE" ? "ALL" : tier;
     onPushNotification(
-      'NEW_MATCH',
-      'NEW ' + (tier === 'VIP_MONTHLY' ? 'VIP MONTHLY' : tier === 'DAY_DEAL' ? 'DAY DEAL' : 'FREE') + ' UPDATE!',
-      `${homeTeam.trim()} vs ${awayTeam.trim()} (${pick.trim()} @ ${odds.trim()}) is now live!`,
+      initialStatus === "WON" ? "WIN" : "NEW_MATCH",
+      initialStatus === "WON"
+        ? "BOOM! VERIFIED WIN POSTED!"
+        : "NEW " + (tier === "VIP_MONTHLY" ? "VIP MONTHLY" : tier === "DAY_DEAL" ? "DAY DEAL" : "FREE") + " SLIP!",
+      hasTextMatch
+        ? `${displayHome} vs ${displayAway}${displayPick ? ` (${displayPick})` : ""} is now live!`
+        : `New verified ${tier === "FREE" ? "Daily Free" : tier === "DAY_DEAL" ? "Day Deal" : "VIP"} betslip is now live!`,
       targetAudience
     );
 
-    setHomeTeam('');
-    setAwayTeam('');
-    setPick('');
-    setOdds('');
-    setAnalysisNote('');
-    setBetslipImageUrl('');
-    await syncKeyNow('predictions', next, 'Match published & synced live to all devices!');
+    setHomeTeam("");
+    setAwayTeam("");
+    setPick("");
+    setOdds("");
+    setAnalysisNote("");
+    setBetslipImageUrl("");
+    setInitialStatus("PENDING");
+    await syncKeyNow("predictions", next, "Published & synced live to all devices!");
   };
 
   const handleSaveEditedMatch = async (e: React.FormEvent) => {
@@ -394,17 +410,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex gap-2"><input type="text" value={customNotifBody} onChange={(e) => setCustomNotifBody(e.target.value)} placeholder="Message..." className="flex-1 p-2 text-xs border rounded-xl" /><button type="button" onClick={() => { if (customNotifBody.trim()) { onPushNotification('LIVE_UPDATE', customNotifTitle.trim() || 'DESK ALERT', customNotifBody.trim(), customNotifTier); setCustomNotifTitle(''); setCustomNotifBody(''); notify('✅ Notification sent!'); } }} className="bg-blue-600 text-white text-xs font-black px-4 rounded-xl cursor-pointer">Send</button></div>
           </div>
 
-          <form onSubmit={handleAddMatch} className="bg-white rounded-2xl border p-4 space-y-2">
-            <h3 className="text-xs font-black uppercase text-blue-700">Publish New Match</h3>
-            <div className="grid grid-cols-2 gap-2">
+          <form onSubmit={handleAddMatch} className="bg-white rounded-2xl border p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase text-blue-700">Publish Match or Image Betslip</h3>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Image-Only Allowed ✓</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
               <select value={tier} onChange={(e) => setTier(e.target.value as PredictionTier)} className="p-2 text-xs font-bold border rounded-xl"><option value="FREE">Daily Free</option><option value="DAY_DEAL">Day Deal</option><option value="VIP_MONTHLY">VIP Monthly</option></select>
               <input type="date" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} className="p-2 text-xs font-bold border rounded-xl" />
+              <select value={initialStatus} onChange={(e) => setInitialStatus(e.target.value as MatchStatus)} className="p-2 text-xs font-extrabold border rounded-xl bg-slate-50"><option value="PENDING">PENDING</option><option value="WON">WON</option><option value="LOST">LOST</option><option value="POSTPONED">POSTPONED</option></select>
             </div>
-            <div className="grid grid-cols-2 gap-2"><input type="text" value={league} onChange={(e) => setLeague(e.target.value)} placeholder="League" className="p-2 text-xs border rounded-xl" /><input type="text" value={kickoffTime} onChange={(e) => setKickoffTime(e.target.value)} placeholder="20:00 EAT" className="p-2 text-xs border rounded-xl" /></div>
-            <div className="grid grid-cols-2 gap-2"><input type="text" required value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)} placeholder="Home Team" className="p-2 text-xs border rounded-xl" /><input type="text" required value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)} placeholder="Away Team" className="p-2 text-xs border rounded-xl" /></div>
-            <div className="grid grid-cols-3 gap-2"><input type="text" required value={pick} onChange={(e) => setPick(e.target.value)} placeholder="Pick" className="col-span-2 p-2 text-xs border rounded-xl" /><input type="text" required value={odds} onChange={(e) => setOdds(e.target.value)} placeholder="Odds" className="p-2 text-xs border rounded-xl" /></div>
-            <div className="grid grid-cols-3 gap-2"><input type="text" value={confidence} onChange={(e) => setConfidence(e.target.value)} placeholder="98%" className="p-2 text-xs border rounded-xl" /><input type="text" value={analysisNote} onChange={(e) => setAnalysisNote(e.target.value)} placeholder="Tactical Note" className="col-span-2 p-2 text-xs border rounded-xl" /></div>
-            <label className="flex items-center justify-center gap-2 bg-slate-100 border border-dashed font-bold text-xs py-2 rounded-xl cursor-pointer"><Upload className="w-4 h-4 text-blue-600" /><span>{betslipImageUrl ? 'Betslip Attached ✓' : 'Attach Betslip Image'}</span><input type="file" accept="image/*" onChange={handleBetslipUpload} className="hidden" /></label>
+            <label className="flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-900 border-2 border-dashed border-blue-400 font-extrabold text-xs py-2.5 rounded-xl cursor-pointer"><Upload className="w-4 h-4 text-blue-600" /><span>{betslipImageUrl ? "Betslip Image Attached ✓ (Ready to Publish!)" : "Attach Betslip Image (Or Fill Fields Below)"}</span><input type="file" accept="image/*" onChange={handleBetslipUpload} className="hidden" /></label>
+            <div className="grid grid-cols-2 gap-2"><input type="text" value={league} onChange={(e) => setLeague(e.target.value)} placeholder="League / Slip Title (Optional)" className="p-2 text-xs border rounded-xl" /><input type="text" value={kickoffTime} onChange={(e) => setKickoffTime(e.target.value)} placeholder="20:00 EAT" className="p-2 text-xs border rounded-xl" /></div>
+            <div className="grid grid-cols-2 gap-2"><input type="text" value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)} placeholder="Home Team (Optional if image)" className="p-2 text-xs border rounded-xl" /><input type="text" value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)} placeholder="Away Team (Optional if image)" className="p-2 text-xs border rounded-xl" /></div>
+            <div className="grid grid-cols-3 gap-2"><input type="text" value={pick} onChange={(e) => setPick(e.target.value)} placeholder="Pick (Optional)" className="col-span-2 p-2 text-xs border rounded-xl" /><input type="text" value={odds} onChange={(e) => setOdds(e.target.value)} placeholder="Odds (Optional)" className="p-2 text-xs border rounded-xl" /></div>
+            <div className="grid grid-cols-3 gap-2"><input type="text" value={confidence} onChange={(e) => setConfidence(e.target.value)} placeholder="98%" className="p-2 text-xs border rounded-xl" /><input type="text" value={analysisNote} onChange={(e) => setAnalysisNote(e.target.value)} placeholder="Desk Note (Optional)" className="col-span-2 p-2 text-xs border rounded-xl" /></div>
             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs py-2.5 rounded-xl cursor-pointer">Publish &amp; Auto-Sync Live</button>
           </form>
 
