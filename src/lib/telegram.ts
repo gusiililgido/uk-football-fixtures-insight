@@ -11,7 +11,7 @@ export async function postToTelegramChannel(params: {
   let chatId = (params.channelId || '').trim();
   if (!chatId && params.channelUrl) {
     const match = params.channelUrl.match(/t\.me\/([a-zA-Z0-9_]+)/);
-    if (match && match[1] && match[1].charAt(0) !== "+") {
+    if (match && match[1] && match[1].charAt(0) !== '+') {
       chatId = `@${match[1]}`;
     }
   }
@@ -33,27 +33,12 @@ export async function postToTelegramChannel(params: {
         appUrl: params.appUrl,
       }),
     });
-    if (relayRes.ok) {
-      const data = await relayRes.json();
-      return data;
+    const contentType = relayRes.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await relayRes.json();
     }
-  } catch {}
-
-  try {
-    const directRes = await fetch(`https://telegram.org{token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: params.text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      }),
-    });
-    const data = await directRes.json();
-    if (!data.ok) return { ok: false, errorMsg: data.description || 'Telegram rejected message' };
-    return { ok: true };
+    return { ok: false, errorMsg: `Relay HTTP ${relayRes.status} — wait 30s for Vercel deploy & refresh` };
   } catch (err: any) {
-    return { ok: false, errorMsg: err?.message || 'Network error' };
+    return { ok: false, errorMsg: err?.message || 'Relay connection error' };
   }
 }
