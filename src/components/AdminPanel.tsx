@@ -269,18 +269,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const target = predictions.find((p) => p.id === id);
     const next = predictions.map((p) => (p.id === id ? { ...p, status } : p));
     setPredictions(next);
-    if (status === 'WON' && target) {
+    if (target) {
       const scoreTxt = target.finalScore ? ` (${target.finalScore})` : '';
-      onPushNotification(
-        'WIN',
-        'BOOM! ' + (target.tier === 'FREE' ? 'FREE' : target.tier === 'DAY_DEAL' ? 'DAY DEAL' : 'VIP') + ' MATCH WON!',
-        `${target.homeTeam} vs ${target.awayTeam}${scoreTxt} — ${target.pick} WON! 🎉🔥`,
-        target.tier === 'FREE' ? 'ALL' : target.tier
-      );
-    }
-    if (status === 'WON' && target) {
-      const scoreTxt = target.finalScore ? ` (${target.finalScore})` : '';
-      await broadcastTelegram(`🎉 <b>BOOM! VERIFIED WIN!</b> 🏆\n⚽ <b>${target.homeTeam}${target.awayTeam ? ` vs ${target.awayTeam}` : ''}${scoreTxt}</b>\n✅ Selection: <b>${target.pick}</b>${target.odds ? ` @ <b>${target.odds}</b>` : ''}\n\n🔥 Check SofaScore result proof inside the app!`);
+      if (target.tier === 'FREE') {
+        const statusHeadline =
+          status === 'WON'
+            ? '🎉 <b>BOOOOOOM! DAILY FREE PICK WON!</b> ✅🏆'
+            : status === 'LOST'
+            ? '📊 <b>DAILY FREE RESULT UPDATE: LOST</b> ❌'
+            : status === 'POSTPONED'
+            ? '⚠️ <b>DAILY FREE MATCH POSTPONED</b> ⏳'
+            : '🔄 <b>DAILY FREE STATUS UPDATED: PENDING</b> ⏳';
+
+        await broadcastTelegram(
+          `${statusHeadline}\n\n⚽ <b>${target.homeTeam}${target.awayTeam ? ` vs ${target.awayTeam}` : ''}${scoreTxt}</b>\n🎯 Selection: <b>${target.pick}</b>${target.odds ? ` @ <b>${target.odds}</b>` : ''}\n📌 Settled Status: <b>${status}</b>\n\n📲 View full SofaScore proof &amp; today’s next slip inside the app!`
+        );
+      } else if (status === 'WON') {
+        const vipName = target.tier === 'VIP_MONTHLY' ? 'VIP MONTHLY (70–100 ODDS)' : 'DAY DEAL (20–70 ODDS)';
+        await broadcastTelegram(
+          `🎉🔥 <b>BOOOOOOM! ${vipName} WON!</b> 🏆💰\n\n✅ Another verified slip settled as <b>WON${scoreTxt}</b> for our authorized subscribers!\n🔒 <i>Paid slip details remain protected for VIP members.</i>\n\n💎 <b>Subscribe to Day Deal or VIP Monthly inside the app to access our next winning slip immediately!</b>`
+        );
+      }
     }
     await syncKeyNow('predictions', next, `Marked ${status} & synced to cloud!`);
   };
