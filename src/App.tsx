@@ -146,6 +146,7 @@ export function App() {
   );
 
   const cloudLoaded = useRef(false);
+  const lastLocalWriteMs = useRef<number>(0);
   const isAdmin = currentUserEmail?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   // Screenshot & Screen-Capture Protection Listener
@@ -273,6 +274,7 @@ export function App() {
 
     syncFromCloud();
     const livePoll = setInterval(async () => {
+      if (Date.now() - lastLocalWriteMs.current < 12000) return;
       const [uList, pList, sSpot, sPosts, sSet, sAnn, sNotif] = await Promise.all([
         fetchCloudState<UserProfile[]>("users"),
         fetchCloudState<Prediction[]>("predictions"),
@@ -302,7 +304,7 @@ export function App() {
 
   useEffect(() => {
     localStorage.setItem('ukffi_settings', JSON.stringify(settings));
-    if (cloudLoaded.current) saveCloudState('settings', settings);
+    lastLocalWriteMs.current = Date.now(); saveCloudState('settings', settings);
   }, [settings]);
 
   useEffect(() => {
@@ -311,7 +313,7 @@ export function App() {
     } catch {
       // Ignore quota if large video
     }
-    if (cloudLoaded.current) saveCloudState('spotlight', spotlight);
+    lastLocalWriteMs.current = Date.now(); saveCloudState('spotlight', spotlight);
   }, [spotlight]);
 
   useEffect(() => {
@@ -320,7 +322,7 @@ export function App() {
     } catch {
       // Ignore quota
     }
-    if (cloudLoaded.current) saveCloudState('home_posts', homePosts);
+    lastLocalWriteMs.current = Date.now(); saveCloudState('home_posts', homePosts);
   }, [homePosts]);
 
   useEffect(() => {
@@ -329,19 +331,19 @@ export function App() {
 
   useEffect(() => {
     localStorage.setItem('ukffi_predictions', JSON.stringify(predictions));
-    if (cloudLoaded.current) saveCloudState('predictions', predictions);
+    lastLocalWriteMs.current = Date.now(); saveCloudState('predictions', predictions);
   }, [predictions]);
 
   useEffect(() => {
     localStorage.setItem('ukffi_users', JSON.stringify(users));
-    if (cloudLoaded.current) saveCloudState('users', users);
+    lastLocalWriteMs.current = Date.now(); saveCloudState('users', users);
   }, [users]);
 
   useEffect(() => {
     localStorage.setItem("ukffi_announcements", JSON.stringify(announcements));
     localStorage.setItem("ukffi_notifications", JSON.stringify(notifications));
-    if (cloudLoaded.current) saveCloudState("notifications", notifications);
-    if (cloudLoaded.current) saveCloudState('announcements', announcements);
+    lastLocalWriteMs.current = Date.now(); saveCloudState("notifications", notifications);
+    lastLocalWriteMs.current = Date.now(); saveCloudState('announcements', announcements);
   }, [announcements, notifications]);
 
   useEffect(() => {
