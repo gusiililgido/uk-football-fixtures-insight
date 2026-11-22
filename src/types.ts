@@ -57,6 +57,8 @@ export interface AppSettings {
   screenshotProtection: boolean;
   forceTelegramJoin: boolean;
   telegramBotToken: string;
+  telegramChannelId?: string;
+  autoPostTelegram?: boolean;
   maintenanceMessage: string;
   adsEnabled: boolean;
   freeTipsAdLock: boolean;

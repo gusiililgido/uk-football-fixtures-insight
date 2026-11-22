@@ -34,6 +34,7 @@ import {
   UserProfile,
 } from '../types';
 import { saveCloudState } from '../lib/supabase';
+import { postToTelegramChannel } from '../lib/telegram';
 
 interface AdminPanelProps {
   predictions: Prediction[];
@@ -154,6 +155,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setToast(''), duration);
   };
 
+  const broadcastTelegram = async (messageHtml: string) => {
+    if (settings.autoPostTelegram === false) return;
+    await postToTelegramChannel({
+      botToken: settings.telegramBotToken,
+      channelId: settings.telegramChannelId,
+      channelUrl: settings.telegramChannelUrl,
+      text: messageHtml,
+      appUrl: window.location.origin,
+    });
+  };
+
   const syncKeyNow = async <T,>(key: string, value: T, successMsg: string) => {
     setSyncBadge('SYNCING');
     const res = await saveCloudState(key, value);
@@ -265,6 +277,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         `${target.homeTeam} vs ${target.awayTeam}${scoreTxt} — ${target.pick} WON! 🎉🔥`,
         target.tier === 'FREE' ? 'ALL' : target.tier
       );
+    }
+    if (status === 'WON' && target) {
+      const scoreTxt = target.finalScore ? ` (${target.finalScore})` : '';
+      await broadcastTelegram(`🎉 <b>BOOM! VERIFIED WIN!</b> 🏆\n⚽ <b>${target.homeTeam}${target.awayTeam ? ` vs ${target.awayTeam}` : ''}${scoreTxt}</b>\n✅ Selection: <b>${target.pick}</b>${target.odds ? ` @ <b>${target.odds}</b>` : ''}\n\n🔥 Check SofaScore result proof inside the app!`);
     }
     await syncKeyNow('predictions', next, `Marked ${status} & synced to cloud!`);
   };
@@ -450,7 +466,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-gradient-to-r from-emerald-950 via-[#0B0F19] to-blue-950 text-white rounded-2xl border border-emerald-500/40 p-4 space-y-2">
             <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1.5"><Trophy className="w-4 h-4" /> Instant BOOM! Win Celebration</span>
             <div className="flex flex-wrap gap-1.5">{['BOOM! Free Bet WON 3/3! 🎉🔥', 'BOOM! Day Deal Slip WON! 🏆', 'BOOM! VIP Monthly Slip WON! 💰🔥'].map((pr, i) => (<button key={i} type="button" onClick={() => setBoomMessage(pr)} className="text-[10px] font-bold bg-slate-800 px-2 py-1 rounded-lg cursor-pointer">Preset {i + 1}</button>))}</div>
-            <div className="flex gap-2"><input type="text" value={boomMessage} onChange={(e) => setBoomMessage(e.target.value)} className="flex-1 px-3 py-2 text-xs text-black bg-white rounded-xl" /><button type="button" onClick={() => { if (boomMessage.trim()) { onPushNotification('WIN', 'BOOM! CONGRATULATIONS!', boomMessage.trim()); notify('✅ BOOM alert sent!'); } }} className="bg-emerald-600 text-white text-xs font-black px-4 rounded-xl cursor-pointer">Send</button></div>
+            <div className="flex gap-2"><input type="text" value={boomMessage} onChange={(e) => setBoomMessage(e.target.value)} className="flex-1 px-3 py-2 text-xs text-black bg-white rounded-xl" /><button type="button" onClick={() => { if (boomMessage.trim()) { onPushNotification('WIN', 'BOOM! CONGRATULATIONS!', boomMessage.trim()); broadcastTelegram(`🎉 <b>BOOM! CONGRATULATIONS!</b>\n\n${boomMessage.trim()}`); notify('✅ BOOM alert sent to App & Telegram!'); } }} className="bg-emerald-600 text-white text-xs font-black px-4 rounded-xl cursor-pointer">Send</button></div>
           </div>
 
           <div className="bg-white rounded-2xl border p-4 space-y-2">
@@ -606,6 +622,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border"><span className="font-bold"><Wrench className="w-3.5 h-3.5 inline mr-1" />Maintenance Mode</span><button type="button" onClick={() => setDraftSettings((p) => ({ ...p, maintenanceMode: !p.maintenanceMode }))} className={`px-3 py-1 rounded-lg font-black ${draftSettings.maintenanceMode ? 'bg-red-600 text-white' : 'bg-slate-200'}`}>{draftSettings.maintenanceMode ? 'ON' : 'OFF'}</button></div>
             <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border"><span className="font-bold">Force Telegram Gate</span><button type="button" onClick={() => setDraftSettings((p) => ({ ...p, forceTelegramJoin: !p.forceTelegramJoin }))} className={`px-3 py-1 rounded-lg font-black ${draftSettings.forceTelegramJoin ? 'bg-blue-600 text-white' : 'bg-slate-200'}`}>{draftSettings.forceTelegramJoin ? 'ON' : 'OFF'}</button></div>
             <input type="text" value={draftSettings.telegramBotToken} onChange={(e) => setDraftSettings((p) => ({ ...p, telegramBotToken: e.target.value }))} placeholder="Telegram Bot Token" className="w-full p-2 border rounded-xl" />
+            <div className="grid grid-cols-3 gap-1.5">
+              <input type="text" value={draftSettings.telegramChannelId || ''} onChange={(e) => setDraftSettings((p) => ({ ...p, telegramChannelId: e.target.value }))} placeholder="@channel or -100..." className="col-span-2 p-2 border rounded-xl" />
+              <button type="button" onClick={() => setDraftSettings((p) => ({ ...p, autoPostTelegram: p.autoPostTelegram === false ? true : false }))} className={`px-2 py-2 rounded-xl font-black text-[10px] cursor-pointer ${draftSettings.autoPostTelegram !== false ? 'bg-emerald-600 text-white' : 'bg-slate-200'}`}>{draftSettings.autoPostTelegram !== false ? 'AUTO-POST: ON' : 'AUTO-POST: OFF'}</button>
+            </div>
+            <button type="button" onClick={async () => {
+              notify('⏳ Sending test post to Telegram...');
+              const r = await postToTelegramChannel({ botToken: draftSettings.telegramBotToken, channelId: draftSettings.telegramChannelId, channelUrl: draftSettings.telegramChannelUrl, text: '✅ <b>U.K. Football Fixtures Insight</b>\nTelegram Auto-Posting is connected & active! 🔥⚽', appUrl: window.location.origin });
+              notify(r.ok ? '✅ Test post published to your Telegram Channel!' : '⚠️ ' + (r.errorMsg || 'Failed'), 6000);
+            }} className="w-full bg-sky-600 hover:bg-sky-700 text-white font-black text-[11px] py-2 rounded-xl cursor-pointer">Test Telegram Channel Auto-Post</button>
             <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border"><span className="font-bold">Screenshot Protection</span><button type="button" onClick={() => setDraftSettings((p) => ({ ...p, screenshotProtection: !p.screenshotProtection }))} className={`px-3 py-1 rounded-lg font-black ${draftSettings.screenshotProtection ? 'bg-red-600 text-white' : 'bg-slate-200'}`}>{draftSettings.screenshotProtection ? 'ON' : 'OFF'}</button></div>
             <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border"><span className="font-bold"><PlayCircle className="w-3.5 h-3.5 inline mr-1" />Google Ads Enabled</span><button type="button" onClick={() => setDraftSettings((p) => ({ ...p, adsEnabled: !p.adsEnabled }))} className={`px-3 py-1 rounded-lg font-black ${draftSettings.adsEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200'}`}>{draftSettings.adsEnabled ? 'ON' : 'OFF'}</button></div>
             <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border"><span className="font-bold">Lock Free Tips Behind Ad</span><button type="button" onClick={() => setDraftSettings((p) => ({ ...p, freeTipsAdLock: !p.freeTipsAdLock }))} className={`px-3 py-1 rounded-lg font-black ${draftSettings.freeTipsAdLock ? 'bg-blue-600 text-white' : 'bg-slate-200'}`}>{draftSettings.freeTipsAdLock ? 'LOCKED' : 'OPEN'}</button></div>
