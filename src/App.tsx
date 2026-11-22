@@ -147,6 +147,7 @@ export function App() {
 
   const cloudLoaded = useRef(false);
   const lastLocalWriteMs = useRef<number>(0);
+  const isInitialMount = useRef<boolean>(true);
   const isAdmin = currentUserEmail?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   // Screenshot & Screen-Capture Protection Listener
@@ -272,6 +273,7 @@ export function App() {
       cloudLoaded.current = true;
     }
 
+    isInitialMount.current = false;
     syncFromCloud();
     const livePoll = setInterval(async () => {
       if (Date.now() - lastLocalWriteMs.current < 12000) return;
@@ -292,7 +294,7 @@ export function App() {
           return Array.from(map.values());
         });
       }
-      if (Array.isArray(pList) && pList.length > 0) setPredictions(pList);
+      if (Array.isArray(pList) && pList.length > 0) { isInitialMount.current = true; setPredictions(pList); setTimeout(() => { isInitialMount.current = false; }, 300); }
       if (sSpot) setSpotlight(sSpot);
       if (Array.isArray(sPosts)) setHomePosts(sPosts);
       if (sSet) setSettings((prev) => ({ ...prev, ...sSet }));
