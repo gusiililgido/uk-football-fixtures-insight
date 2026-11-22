@@ -117,29 +117,92 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
   }, 1);
 
   if (!hasAccess) {
+    const perks = isGuestBlockedOnFree
+      ? [
+          { title: "Today’s Verified 2–5 Odds Slip", desc: "High-probability daily accumulator updated every morning" },
+          { title: "Live 90-Min Matchday Clocks", desc: "Real-time kickoff countdowns, live minute tracker & FT alerts" },
+          { title: "Official Betslips & Proofs", desc: "Full-screen betslip screenshots & SofaScore result verification" },
+          { title: "Complete Calendar Archive", desc: "Check Yesterday & past dates with zero mixing of active tips" },
+        ]
+      : tier === "DAY_DEAL"
+      ? [
+          { title: "20–70 Odds High-Return Slip", desc: "Engineered 24-hour multi-match accumulator from our UK desk" },
+          { title: "Instant M-Pesa / Wallet Activation", desc: "Immediate 24-hour full access right after payment confirmation" },
+          { title: "Verified Betslip & SofaScore Proof", desc: "Complete transparency with pre-match slips & settled proofs" },
+          { title: "Priority Matchday Notifications", desc: "Direct alerts when slips drop & BOOM full-time celebrations" },
+        ]
+      : [
+          { title: "70–100 Odds Executive Mega Slip", desc: "30-day unlimited VIP access to our highest-value research slips" },
+          { title: "All Day Deal & VIP Slips Included", desc: "Full 30-day access across every premium tier with zero limits" },
+          { title: "Verified Historical Track Record", desc: "Browse every settled VIP slip across our date calendar archive" },
+          { title: "Direct Analyst Desk Support", desc: "Priority WhatsApp & Telegram VIP desk updates all month" },
+        ];
+
     return (
-      <div className="bg-white rounded-2xl border-2 border-blue-600/20 p-6 text-center space-y-4 shadow-lg">
-        <div className="w-14 h-14 rounded-2xl bg-[#0B0F19] text-amber-400 flex items-center justify-center mx-auto shadow">
-          <Lock className="w-7 h-7" />
+      <div className="min-h-[68vh] flex flex-col justify-between bg-white rounded-3xl border-2 border-slate-200 shadow-2xl overflow-hidden">
+        <div className={`bg-gradient-to-br ${tierMeta.accent} text-white p-6 sm:p-7 space-y-3`}>
+          <div className="flex items-center justify-between gap-2">
+            <span className={`${isGuestBlockedOnFree ? "bg-blue-600" : "bg-red-600"} text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider`}>
+              {isGuestBlockedOnFree ? "Free Member Access Required" : "VIP Restricted Access"}
+            </span>
+            <span className="bg-white/10 text-amber-300 text-xs font-black px-3 py-1 rounded-xl border border-white/15">
+              {tierMeta.badge}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+              <Lock className="w-6 h-6 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight">{tierMeta.title}</h2>
+              <p className="text-xs text-slate-300 mt-0.5">{tierMeta.subtitle}</p>
+            </div>
+          </div>
         </div>
-        <div className="space-y-1">
-          <span className={`${isGuestBlockedOnFree ? "bg-blue-600" : "bg-red-600"} text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase`}>
-            {isGuestBlockedOnFree ? "Member Restricted Access" : "VIP Restricted Access"}
-          </span>
-          <h2 className="text-lg font-black text-[#0B0F19]">{tierMeta.title}</h2>
-          <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-            {isGuestBlockedOnFree
-              ? "Create a free account or sign in to unlock Today’s Daily Free (2–5 Odds) slip, live match clocks & verified calendar archive."
-              : `${tierMeta.subtitle}. Unlock instant access to today’s verified slip & full historical archive.`}
-          </p>
+
+        <div className="p-5 sm:p-6 space-y-4 flex-1 flex flex-col justify-between">
+          <div className="space-y-2.5">
+            <div className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+              What’s Included Inside Once Unlocked:
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {perks.map((pk, idx) => (
+                <div key={idx} className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-black text-[#0B0F19]">{pk.title}</div>
+                    <div className="text-[11px] text-slate-600 leading-snug mt-0.5">{pk.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-xs text-emerald-950 leading-relaxed">
+            <strong className="font-black">Verified Trust &amp; Transparency:</strong> Every fixture is backed by pre-match statistical analysis, live 90-minute match clocks, and timestamped SofaScore result proofs.
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              onClick={() =>
+                isGuestBlockedOnFree && onOpenAuth
+                  ? onOpenAuth()
+                  : onOpenPayment(tier as "DAY_DEAL" | "VIP_MONTHLY")
+              }
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm py-3.5 px-6 rounded-2xl shadow-lg transition cursor-pointer"
+            >
+              {isGuestBlockedOnFree
+                ? "Create Free Account / Sign In to Unlock"
+                : `Unlock ${tierMeta.title} Now (${tierMeta.badge})`}
+            </button>
+            <p className="text-center text-[11px] font-bold text-slate-500">
+              {isGuestBlockedOnFree
+                ? "100% Free Registration • Instant Access Across All Devices"
+                : "Instant Activation • Full Access to Today & Historical Archive"}
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => (isGuestBlockedOnFree && onOpenAuth ? onOpenAuth() : onOpenPayment(tier as 'DAY_DEAL' | 'VIP_MONTHLY'))}
-          className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-3 px-5 rounded-xl shadow cursor-pointer"
-        >
-          {isGuestBlockedOnFree ? "Create Free Account / Sign In to Unlock" : `Unlock ${tierMeta.title} (${tierMeta.badge})`}
-        </button>
       </div>
     );
   }
