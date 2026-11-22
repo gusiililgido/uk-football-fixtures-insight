@@ -24,6 +24,8 @@ interface PredictionsViewProps {
   predictions: Prediction[];
   userTier: PredictionTier;
   isAdmin: boolean;
+  isLoggedIn?: boolean;
+  onOpenAuth?: () => void;
   hasFreeAdUnlock?: boolean;
   onWatchAdToUnlock?: () => void;
   settings: AppSettings;
@@ -38,6 +40,8 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
   predictions,
   userTier,
   isAdmin,
+  isLoggedIn = false,
+  onOpenAuth,
   hasFreeAdUnlock,
   settings,
   onOpenPayment,
@@ -66,11 +70,12 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
     setSelectedDate(base.toISOString().slice(0, 10));
   };
 
+  const isGuestBlockedOnFree = tier === "FREE" && !isLoggedIn && !isAdmin;
   const hasAccess =
     isAdmin ||
-    tier === 'FREE' ||
-    userTier === 'VIP_MONTHLY' ||
-    (tier === 'DAY_DEAL' && userTier === 'DAY_DEAL');
+    (tier === "FREE" && isLoggedIn) ||
+    userTier === "VIP_MONTHLY" ||
+    (tier === "DAY_DEAL" && userTier === "DAY_DEAL");
 
   const needsAdUnlock =
     tier === 'FREE' &&
@@ -118,12 +123,22 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
           <Lock className="w-7 h-7" />
         </div>
         <div className="space-y-1">
-          <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">VIP Restricted Access</span>
+          <span className={`${isGuestBlockedOnFree ? "bg-blue-600" : "bg-red-600"} text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase`}>
+            {isGuestBlockedOnFree ? "Member Restricted Access" : "VIP Restricted Access"}
+          </span>
           <h2 className="text-lg font-black text-[#0B0F19]">{tierMeta.title}</h2>
-          <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">{tierMeta.subtitle}. Unlock instant access to today’s verified slip &amp; full historical archive.</p>
+          <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+            {isGuestBlockedOnFree
+              ? "Create a free account or sign in to unlock Today’s Daily Free (2–5 Odds) slip, live match clocks & verified calendar archive."
+              : `${tierMeta.subtitle}. Unlock instant access to today’s verified slip & full historical archive.`}
+          </p>
         </div>
-        <button type="button" onClick={() => onOpenPayment(tier)} className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-3 px-5 rounded-xl shadow cursor-pointer">
-          Unlock {tierMeta.title} ({tierMeta.badge})
+        <button
+          type="button"
+          onClick={() => (isGuestBlockedOnFree && onOpenAuth ? onOpenAuth() : onOpenPayment(tier as 'DAY_DEAL' | 'VIP_MONTHLY'))}
+          className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-3 px-5 rounded-xl shadow cursor-pointer"
+        >
+          {isGuestBlockedOnFree ? "Create Free Account / Sign In to Unlock" : `Unlock ${tierMeta.title} (${tierMeta.badge})`}
         </button>
       </div>
     );

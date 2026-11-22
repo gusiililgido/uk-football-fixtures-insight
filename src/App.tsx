@@ -658,7 +658,7 @@ export function App() {
           />
         )}
         {(activeTab === 'FREE' || activeTab === 'DAY_DEAL' || activeTab === 'VIP_MONTHLY') && (
-          <PredictionsView
+          <PredictionsView isLoggedIn={Boolean(currentUser)} onOpenAuth={() => { setAuthContextBanner("Create a free account or sign in to unlock Daily Free (2–5 Odds) & VIP slips."); setShowAuthModal(true); }}
             tier={activeTab}
             predictions={predictions}
             userTier={currentUser?.tier || 'FREE'}
@@ -677,7 +677,7 @@ export function App() {
             onPreviewImage={(url, title, subtitle) => setPreviewMedia({ url, title, subtitle })}
           />
         )}
-        {activeTab === 'SETTINGS' && currentUser && (
+        {activeTab === 'SETTINGS' && (
           <SettingsView
             currentUser={currentUser}
             walletBalance={activeWalletBalance}
