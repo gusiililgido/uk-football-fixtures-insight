@@ -1,4 +1,5 @@
 import { TelegramJoinModal } from './components/TelegramJoinModal';
+import { AccountView } from './components/AccountView';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ADMIN_EMAIL,
@@ -16,11 +17,11 @@ import {
   PredictionTier,
   SpotlightMedia,
   UserProfile,
+  PaymentRequest,
 } from './types';
 import { ActiveTab, Layout } from './components/Layout';
 import { HomeView } from './components/HomeView';
 import { PredictionsView } from './components/PredictionsView';
-import { SettingsView } from './components/SettingsView';
 import { PaymentModal } from './components/PaymentModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
@@ -73,6 +74,10 @@ export function App() {
   const [predictions, setPredictions] = useState<Prediction[]>(() =>
     loadSaved('ukffi_predictions', INITIAL_PREDICTIONS)
   );
+  const [payments, setPayments] = useState<PaymentRequest[]>(() => {
+    try { const s = localStorage.getItem("ukffi_payments"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  useEffect(() => { try { localStorage.setItem("ukffi_payments", JSON.stringify(payments)); } catch {} }, [payments]);
   const [users, setUsers] = useState<UserProfile[]>(() =>
     loadSaved('ukffi_users', INITIAL_USERS)
   );
@@ -279,8 +284,9 @@ export function App() {
     syncFromCloud();
     const livePoll = setInterval(async () => {
       if (Date.now() - lastLocalWriteMs.current < 6000) return;
-      const [uList, pList, sSpot, sPosts, sSet, sAnn, sNotif] = await Promise.all([
+      const [uList, payList, pList, sSpot, sPosts, sSet, sAnn, sNotif] = await Promise.all([
         fetchCloudState<UserProfile[]>("users"),
+        fetchCloudState<PaymentRequest[]>("payments"),
         fetchCloudState<Prediction[]>("predictions"),
         fetchCloudState<SpotlightMedia>("spotlight"),
         fetchCloudState<HomeFeedPost[]>("homePosts"),
@@ -296,6 +302,7 @@ export function App() {
           return Array.from(map.values());
         });
       }
+      if (Array.isArray(payList)) setPayments(payList);
       if (Array.isArray(pList) && pList.length > 0) setPredictions(pList);
       if (sSpot) setSpotlight(sSpot);
       if (Array.isArray(sPosts)) setHomePosts(sPosts);
@@ -396,7 +403,6 @@ export function App() {
   const freeTipsUnlockedToday = freeUnlockedDate === todayKey || dailyRewardClaimed;
 
   const activeWalletBalance = currentUser ? currentUser.walletBalance || 0 : guestWallet;
-  const activeAdsWatched = currentUser ? currentUser.adsWatchedCount || 0 : guestAdsCount;
 
   const handleRegisterUser = (data: { name: string; countryCode: string; phone: string; email: string; password: string }) => {
     const cleanEmail = data.email.trim().toLowerCase();
@@ -446,6 +452,43 @@ export function App() {
   };
   const firstNotifId = notifications.slice(0, 1).shift()?.id;
   const unreadCount = firstNotifId && lastSeenNotifId !== firstNotifId ? Math.max(1, notifications.findIndex((n) => n.id === lastSeenNotifId) === -1 ? notifications.length : notifications.findIndex((n) => n.id === lastSeenNotifId)) : 0;
+  const handleSubmitPayment = async (tier: "DAY_DEAL" | "VIP_MONTHLY", mpesaCode: string) => {
+    if (!currentUser) return;
+    const req: PaymentRequest = {
+      id: `pay-${Date.now()}`,
+      userEmail: currentUser.email,
+      userName: currentUser.name,
+      userPhone: currentUser.phone,
+      tier,
+      amountKes: tier === "DAY_DEAL" ? settings.dayDealPrice : settings.vipMonthlyPrice,
+      mpesaCode,
+      status: "PENDING",
+      submittedAt: new Date().toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
+    };
+    lastLocalWriteMs.current = Date.now();
+    const latestCloud = await fetchCloudState<PaymentRequest[]>("payments");
+    const base = Array.isArray(latestCloud) ? latestCloud : payments;
+    const next = [req, ...base];
+    setPayments(next);
+    await saveCloudState("payments", next);
+  };
+
+  const handleUnlockWithWallet = (tier: "DAY_DEAL" | "VIP_MONTHLY", cost: number): boolean => {
+    if (!currentUser || (currentUser.walletBalance || 0) < cost) return false;
+    const days = tier === "VIP_MONTHLY" ? 30 : 1;
+    const expiryDate = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+    const nextUsers = users.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? { ...u, walletBalance: (u.walletBalance || 0) - cost, tier, expiresAt: expiryDate }
+        : u
+    );
+    lastLocalWriteMs.current = Date.now();
+    setUsers(nextUsers);
+    saveCloudState("users", nextUsers);
+    handlePushNotification("LIVE_UPDATE", "VIP ACTIVATED!", `${tier === "VIP_MONTHLY" ? "VIP Monthly" : "Day Deal"} unlocked using your KES Wallet!`, tier);
+    return true;
+  };
+
   const handleLogout = () => {
     setCurrentUserEmail(null);
     if (activeTab === 'ADMIN') setActiveTab('HOME');
@@ -476,25 +519,7 @@ export function App() {
     }
   };
 
-  const handleRedeemWallet = (tier: Exclude<PredictionTier, 'FREE'>, cost: number) => {
-    if (!currentUserEmail) return;
-    const days = tier === 'VIP_MONTHLY' ? 30 : 1;
-    const expiryDate = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.email.toLowerCase() === currentUserEmail.toLowerCase()
-          ? {
-              ...u,
-              tier,
-              expiresAt: expiryDate,
-              walletBalance: Math.max(0, (u.walletBalance || 0) - cost),
-            }
-          : u
-      )
-    );
-  };
-
+  
   const handleRequestNotifications = async () => {
     if (!('Notification' in window)) {
       alert('Push notifications are not supported on this browser.');
@@ -591,6 +616,8 @@ export function App() {
         </div>
       )}
       <Layout
+        onInstallApp={handleInstallApp}
+        onRequestNotifications={handleRequestNotifications}
         activeTab={activeTab}
         setActiveTab={handleSelectTab}
         onGoBack={handleGoBack}
@@ -599,8 +626,6 @@ export function App() {
         currentUserEmail={currentUserEmail}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
-        onInstallApp={handleInstallApp}
-        onRequestNotifications={handleRequestNotifications}
         unreadCount={unreadCount}
         onOpenNotifications={() => {
           if (!currentUser) {
@@ -638,6 +663,9 @@ export function App() {
         )}
         {activeTab === 'HOME' && (
           <HomeView
+            onWatchAdForWallet={() => setAdModalPurpose('EARN_WALLET')}
+            onInstallApp={handleInstallApp}
+            onRequestNotifications={handleRequestNotifications}
             spotlight={spotlight}
             homePosts={homePosts}
             likedIds={likedIds}
@@ -649,11 +677,8 @@ export function App() {
             totalPredictionsCount={predictions.length}
             walletBalance={activeWalletBalance}
             dailyRewardClaimed={dailyRewardClaimed}
-            onWatchAdForWallet={() => setAdModalPurpose('EARN_WALLET')}
             canInstallApp={Boolean(installPromptEvent)}
-            onInstallApp={handleInstallApp}
             notificationPermission={notificationPermission}
-            onRequestNotifications={handleRequestNotifications}
             onPreviewImage={(url, title, subtitle) => setPreviewMedia({ url, title, subtitle })}
           />
         )}
@@ -678,22 +703,20 @@ export function App() {
           />
         )}
         {activeTab === 'SETTINGS' && (
-          <SettingsView
-            currentUser={currentUser}
-            walletBalance={activeWalletBalance}
-            adsWatchedCount={activeAdsWatched}
-            dailyRewardClaimed={dailyRewardClaimed}
-            settings={settings}
-            announcements={announcements}
-            onOpenAuth={() => setShowAuthModal(true)}
+          <AccountView
             onOpenPayment={(tier) => setPaymentModalTier(tier)}
-            onWatchAdForWallet={() => setAdModalPurpose('EARN_WALLET')}
-            canInstallApp={Boolean(installPromptEvent)}
-            onInstallApp={handleInstallApp}
-            notificationPermission={notificationPermission}
-            onRequestNotifications={handleRequestNotifications}
+            user={currentUser}
+            isAdmin={isAdmin}
+            settings={settings}
+            payments={payments}
+            onOpenAuth={() => setShowAuthModal(true)}
+            onLogout={handleLogout}
+            onWatchAdForCredits={() => setAdModalPurpose('EARN_WALLET')}
+            onUnlockWithWallet={handleUnlockWithWallet}
           />
         )}
+            canInstallApp={Boolean(installPromptEvent)}
+            notificationPermission={notificationPermission}
         {activeTab === 'LEGAL' && <LegalHub settings={settings} />}
         {activeTab === 'FAQ' && <FAQView settings={settings} />}
         {activeTab === 'ADMIN' && isAdmin && (
@@ -708,6 +731,8 @@ export function App() {
             setSettings={setSettings}
             users={users}
             setUsers={setUsers}
+            payments={payments}
+            setPayments={setPayments}
             announcements={announcements} setAnnouncements={setAnnouncements}
             onPushNotification={handlePushNotification}
             cloudSyncOk={cloudSyncOk}
@@ -715,6 +740,7 @@ export function App() {
               const results = await Promise.all([
                 saveCloudState("predictions", predictions),
                 saveCloudState("users", users),
+                saveCloudState("payments", payments),
                 saveCloudState("spotlight", spotlight),
                 saveCloudState("homePosts", homePosts),
                 saveCloudState("settings", settings),
@@ -729,14 +755,14 @@ export function App() {
         {showAuthModal && <AuthModal existingUsers={users} onRegister={handleRegisterUser} onLogin={handleLoginUser} contextBanner={authContextBanner} onClose={() => { setShowAuthModal(false); setAuthContextBanner(""); }} />}
         {paymentModalTier && (
           <PaymentModal
-            tier={paymentModalTier}
-            settings={settings}
-            userEmail={currentUserEmail}
-            walletBalance={activeWalletBalance}
-            onRedeemWallet={handleRedeemWallet}
-            onClose={() => setPaymentModalTier(null)}
-            onRequireLogin={() => { setPaymentModalTier(null); setShowAuthModal(true); }}
-          />
+          initialTier={paymentModalTier}
+          settings={settings}
+          user={currentUser}
+          pendingPayments={payments}
+          onSubmitPayment={handleSubmitPayment}
+          onUnlockWithWallet={handleUnlockWithWallet}
+          onClose={() => setPaymentModalTier(null)}
+        />
         )}
         {adModalPurpose && (
           <RewardedAdModal

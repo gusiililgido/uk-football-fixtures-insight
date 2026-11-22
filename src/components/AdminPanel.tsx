@@ -1,3 +1,4 @@
+import type { PaymentRequest } from '../types';
 import React, { useEffect, useState } from 'react';
 import {
   ShieldCheck,
@@ -18,6 +19,9 @@ import {
   X,
   CloudCheck,
   Save,
+  CreditCard,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import {
   AppNotification,
@@ -42,6 +46,8 @@ interface AdminPanelProps {
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   users: UserProfile[];
   setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
+  payments: PaymentRequest[];
+  setPayments: React.Dispatch<React.SetStateAction<PaymentRequest[]>>;
   announcements: string[];
   setAnnouncements: React.Dispatch<React.SetStateAction<string[]>>;
   onPushNotification: (
@@ -55,7 +61,7 @@ interface AdminPanelProps {
   onForceCloudPush?: () => Promise<{ ok: boolean; message: string }>;
 }
 
-type AdminSubTab = 'MATCHES' | 'SPOTLIGHT' | 'USERS' | 'SYSTEM';
+type AdminSubTab = 'MATCHES' | 'PAYMENTS' | 'SPOTLIGHT' | 'USERS' | 'SYSTEM';
 
 function compressImageFile(file: File, maxWidth = 720): Promise<string> {
   return new Promise((resolve) => {
@@ -88,6 +94,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   setSettings,
   users,
   setUsers,
+  payments,
+  setPayments,
   announcements,
   setAnnouncements,
   onPushNotification,
@@ -339,6 +347,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     await syncKeyNow('users', next, 'User access status synced!');
   };
 
+  const pendingPaymentsCount = payments.filter((p) => p.status === 'PENDING').length;
+
+  const handleApprovePayment = async (payId: string) => {
+    const req = payments.find((p) => p.id === payId);
+    if (!req) return;
+    const nextPayments = payments.map((p) =>
+      p.id === payId ? { ...p, status: 'APPROVED' as const } : p
+    );
+    setPayments(nextPayments);
+    await syncKeyNow('payments', nextPayments, 'Payment APPROVED & synced!');
+    const days = req.tier === 'VIP_MONTHLY' ? 30 : 1;
+    const expiryDate = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+    const nextUsers = users.map((u) =>
+      u.email.toLowerCase() === req.userEmail.toLowerCase()
+        ? { ...u, tier: req.tier, expiresAt: expiryDate }
+        : u
+    );
+    setUsers(nextUsers);
+    await syncKeyNow('users', nextUsers, `✅ ${req.userName} upgraded to ${req.tier} & synced!`);
+    onPushNotification(
+      'LIVE_UPDATE',
+      'VIP ACCESS ACTIVATED!',
+      `${req.userName}, your ${req.tier === 'VIP_MONTHLY' ? 'VIP Monthly' : 'Day Deal'} payment (KES ${req.amountKes}) is verified & active!`,
+      req.tier
+    );
+  };
+
+  const handleRejectPayment = async (payId: string) => {
+    const nextPayments = payments.map((p) =>
+      p.id === payId ? { ...p, status: 'REJECTED' as const } : p
+    );
+    setPayments(nextPayments);
+    await syncKeyNow('payments', nextPayments, 'Payment marked REJECTED & synced!');
+  };
+
+  const handleDeletePayment = async (payId: string) => {
+    const nextPayments = payments.filter((p) => p.id !== payId);
+    setPayments(nextPayments);
+    await syncKeyNow('payments', nextPayments, 'Payment record deleted!');
+  };
+
   const activeMatches = predictions.filter((p) => p.status === 'PENDING');
   const settledHistoryAll = predictions.filter((p) => p.status !== 'PENDING');
   const settledHistoryFiltered =
@@ -389,8 +438,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-slate-900 rounded-xl p-2"><div className="text-base font-black text-blue-400">{users.length}</div><div className="text-[10px] text-slate-400">Users</div></div>
           <div className="bg-slate-900 rounded-xl p-2"><div className="text-base font-black text-amber-400">{paidUsersCount}</div><div className="text-[10px] text-slate-400">VIPs</div></div>
         </div>
-        <div className="grid grid-cols-4 gap-1.5 mt-3">
-          {[{ id: 'MATCHES', label: 'Matches', icon: <PlusCircle className="w-3.5 h-3.5" /> }, { id: 'SPOTLIGHT', label: 'Home Post', icon: <ImageIcon className="w-3.5 h-3.5" /> }, { id: 'USERS', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> }, { id: 'SYSTEM', label: 'Settings', icon: <SettingsIcon className="w-3.5 h-3.5" /> }].map((tab) => (
+        <div className="grid grid-cols-5 gap-1 mt-3">
+          {[{ id: 'MATCHES', label: 'Matches', icon: <PlusCircle className="w-3.5 h-3.5" /> }, { id: 'PAYMENTS', label: pendingPaymentsCount > 0 ? `Pay (${pendingPaymentsCount})` : 'Payments', icon: <CreditCard className="w-3.5 h-3.5" /> }, { id: 'SPOTLIGHT', label: 'Post', icon: <ImageIcon className="w-3.5 h-3.5" /> }, { id: 'USERS', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> }, { id: 'SYSTEM', label: 'Settings', icon: <SettingsIcon className="w-3.5 h-3.5" /> }].map((tab) => (
             <button key={tab.id} type="button" onClick={() => setSubTab(tab.id as AdminSubTab)} className={`flex items-center justify-center gap-1 py-2 rounded-xl text-[11px] font-extrabold cursor-pointer ${subTab === tab.id ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400'}`}>{tab.icon}<span>{tab.label}</span></button>
           ))}
         </div>
@@ -466,6 +515,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
+      {subTab === 'PAYMENTS' && (
+        <div className="space-y-3">
+          <div className="bg-[#0B0F19] text-white rounded-2xl p-4 border border-amber-500/40 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-black uppercase text-amber-400">M-Pesa Payment Verification Queue</div>
+              <div className="text-[11px] text-slate-300 mt-0.5">Approving automatically unlocks the user’s VIP access across all devices.</div>
+            </div>
+            <span className="bg-amber-500 text-[#0B0F19] text-xs font-black px-3 py-1 rounded-full">{pendingPaymentsCount} Pending</span>
+          </div>
+          {payments.length === 0 ? (
+            <div className="bg-white rounded-2xl border p-8 text-center text-xs text-slate-500">No payment submissions yet.</div>
+          ) : (
+            <div className="space-y-2.5">
+              {payments.map((pm) => (
+                <div key={pm.id} className="bg-white rounded-2xl border p-3.5 space-y-2.5 shadow-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${pm.status === 'PENDING' ? 'bg-amber-100 text-amber-900' : pm.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>{pm.status}</span>
+                        <span className="text-[10px] font-black bg-blue-100 text-blue-900 px-2 py-0.5 rounded-full">{pm.tier.replace('_', ' ')} • KES {pm.amountKes}</span>
+                      </div>
+                      <div className="text-xs font-black text-[#0B0F19] mt-1">{pm.userName}</div>
+                      <div className="text-[11px] text-slate-600">📱 {pm.userPhone || 'N/A'} • ✉️ {pm.userEmail}</div>
+                    </div>
+                    <button type="button" onClick={() => handleDeletePayment(pm.id)} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-red-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                  <div className="bg-slate-900 text-amber-300 font-mono text-[11px] p-2.5 rounded-xl break-all">M-Pesa / SMS: {pm.mpesaCode}</div>
+                  <div className="text-[10px] text-slate-400">Submitted: {pm.submittedAt}</div>
+                  {pm.status === 'PENDING' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button type="button" onClick={() => handleApprovePayment(pm.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2.5 rounded-xl flex items-center justify-center gap-1 shadow cursor-pointer"><CheckCircle2 className="w-4 h-4" /> Approve &amp; Activate VIP</button>
+                      <button type="button" onClick={() => handleRejectPayment(pm.id)} className="bg-red-600 hover:bg-red-700 text-white font-black text-xs py-2.5 rounded-xl flex items-center justify-center gap-1 cursor-pointer"><XCircle className="w-4 h-4" /> Reject</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {subTab === 'SPOTLIGHT' && (
         <div className="space-y-4">
           <form onSubmit={handlePublishHomePost} className="bg-white rounded-2xl border p-4 space-y-2.5">

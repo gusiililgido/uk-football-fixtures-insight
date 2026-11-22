@@ -1,181 +1,154 @@
 import React, { useState } from 'react';
 import {
   X,
+  Crown,
   Copy,
-  Check,
-  MessageCircle,
-  ShieldCheck,
-  CreditCard,
-  AlertCircle,
+  CheckCircle2,
+  Smartphone,
   Wallet,
-  Sparkles,
+  Clock,
+  ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
-import { AppSettings, PredictionTier } from '../types';
+import { AppSettings, PaymentRequest, UserProfile } from '../types';
 
 interface PaymentModalProps {
-  tier: Exclude<PredictionTier, 'FREE'>;
+  initialTier: 'DAY_DEAL' | 'VIP_MONTHLY';
   settings: AppSettings;
-  userEmail: string | null;
-  walletBalance: number;
-  onRedeemWallet: (tier: Exclude<PredictionTier, 'FREE'>, cost: number) => void;
+  user: UserProfile | null;
+  pendingPayments: PaymentRequest[];
+  onSubmitPayment: (tier: 'DAY_DEAL' | 'VIP_MONTHLY', mpesaCode: string) => Promise<void>;
+  onUnlockWithWallet: (tier: 'DAY_DEAL' | 'VIP_MONTHLY', cost: number) => boolean;
   onClose: () => void;
-  onRequireLogin: () => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
-  tier,
+  initialTier,
   settings,
-  userEmail,
-  walletBalance,
-  onRedeemWallet,
+  user,
+  pendingPayments,
+  onSubmitPayment,
+  onUnlockWithWallet,
   onClose,
-  onRequireLogin,
 }) => {
+  const [selectedTier, setSelectedTier] = useState<'DAY_DEAL' | 'VIP_MONTHLY'>(initialTier);
+  const [mpesaCode, setMpesaCode] = useState('');
   const [copied, setCopied] = useState(false);
-  const [mpesaNameOrRef, setMpesaNameOrRef] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedDone, setSubmittedDone] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const isDayDeal = tier === 'DAY_DEAL';
-  const planTitle = isDayDeal ? 'DAY DEAL (20 - 70 ODDS)' : 'VIP MONTHLY (70 - 100 ODDS)';
-  const amountStr = isDayDeal ? settings.dayDealPrice : settings.vipMonthlyPrice;
-  const numericCost = Number(amountStr) || (isDayDeal ? 350 : 3500);
-  const canAffordWithWallet = Boolean(userEmail) && walletBalance >= numericCost;
+  const amountStr =
+    selectedTier === 'DAY_DEAL' ? settings.dayDealPrice : settings.vipMonthlyPrice;
+  const amountNum = parseInt(String(amountStr).replace(/\D/g, ''), 10) || (selectedTier === 'DAY_DEAL' ? 350 : 1500);
+  const walletBalance = user?.walletBalance || 0;
+  const canPayWithWallet = walletBalance >= amountNum;
+
+  const existingPending = pendingPayments.find(
+    (p) =>
+      user &&
+      p.userEmail.toLowerCase() === user.email.toLowerCase() &&
+      p.status === 'PENDING'
+  );
 
   const handleCopyNumber = () => {
     navigator.clipboard?.writeText(settings.paymentNumber);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleIHavePaid = () => {
-    if (!userEmail) {
-      onRequireLogin();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    const cleaned = mpesaCode.trim();
+    if (cleaned.length < 6) {
+      setErrorMsg('Please paste your valid M-Pesa transaction code or full confirmation SMS.');
       return;
     }
-
-    const message = [
-      `Hello U.K FOOTBALL FIXTURES INSIGHT Admin!`,
-      `I HAVE PAID for subscription access:`,
-      `• Plan: ${planTitle}`,
-      `• Amount: KES ${amountStr}/=`,
-      `• Account Email: ${userEmail}`,
-      mpesaNameOrRef ? `• Payment Name/Ref: ${mpesaNameOrRef}` : '',
-      `Please verify and activate my access immediately. Thank you!`,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    const base = 'https://' + 'wa.me/';
-    const whatsappUrl = `${base}${settings.supportWhatsappNumber}?text=${encodeURIComponent(
-      message
-    )}`;
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    onClose();
+    setSubmitting(true);
+    await onSubmitPayment(selectedTier, cleaned);
+    setSubmitting(false);
+    setSubmittedDone(true);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto">
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-3">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
         <div className="bg-[#0B0F19] text-white px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-blue-400" />
-            <h3 className="text-sm font-extrabold uppercase tracking-wide">
-              Unlock {isDayDeal ? 'Day Deal' : 'VIP Monthly'}
-            </h3>
+            <Crown className="w-5 h-5 text-amber-400" />
+            <h3 className="text-sm font-black uppercase tracking-wide">VIP Payment &amp; Instant Activation</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
-            <X className="w-5 h-5" />
-          </button>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white p-1 cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="p-4 space-y-3.5">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase text-blue-700">Selected Plan</div>
-              <div className="text-sm font-black text-[#0B0F19]">{planTitle}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[11px] font-semibold text-slate-500">Fee</div>
-              <div className="text-lg font-black text-red-600">KES {amountStr}/=</div>
-            </div>
+        <div className="p-4 space-y-3 overflow-y-auto text-xs">
+          <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+            <button type="button" onClick={() => { setSelectedTier('DAY_DEAL'); setSubmittedDone(false); }} className={`py-2 px-2 rounded-lg font-black cursor-pointer ${selectedTier === 'DAY_DEAL' ? 'bg-blue-600 text-white shadow' : 'text-slate-700'}`}>
+              Day Deal • KES {settings.dayDealPrice}
+            </button>
+            <button type="button" onClick={() => { setSelectedTier('VIP_MONTHLY'); setSubmittedDone(false); }} className={`py-2 px-2 rounded-lg font-black cursor-pointer ${selectedTier === 'VIP_MONTHLY' ? 'bg-red-600 text-white shadow' : 'text-slate-700'}`}>
+              VIP Monthly • KES {settings.vipMonthlyPrice}
+            </button>
           </div>
 
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-900">
-                <Wallet className="w-4 h-4 text-emerald-600" />
-                <span>In-App Ad Wallet Balance</span>
-              </span>
-              <span className="text-sm font-black text-emerald-700">
-                KES {walletBalance}
-              </span>
-            </div>
-
-            {canAffordWithWallet ? (
-              <button
-                onClick={() => {
-                  onRedeemWallet(tier, numericCost);
-                  onClose();
-                }}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow flex items-center justify-center gap-1.5 transition"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Activate Now Using Wallet (KES {numericCost})</span>
-              </button>
-            ) : (
-              <p className="text-[11px] text-emerald-800 leading-snug">
-                Watch 20s ads to earn KES {settings.adRewardKes}/ad. Reach{' '}
-                <strong>KES {numericCost}</strong> to unlock this plan automatically (non-withdrawable).
-              </p>
-            )}
-          </div>
-
-          <div className="bg-slate-900 text-white rounded-xl p-3.5 space-y-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-blue-300">
-              Or Pay via {settings.paymentNetworkLabel}
-            </div>
-            <div className="flex items-center justify-between bg-slate-800 px-3 py-2 rounded-lg border border-slate-700">
-              <div>
-                <div className="text-[10px] text-slate-400">Send Money Number</div>
-                <div className="text-base font-mono font-black tracking-wider text-emerald-400">
-                  {settings.paymentNumber}
-                </div>
+          {canPayWithWallet && (
+            <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between font-black text-emerald-900">
+                <span className="flex items-center gap-1.5"><Wallet className="w-4 h-4 text-emerald-600" /> Wallet Balance: KES {walletBalance}</span>
+                <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full">INSTANT</span>
               </div>
-              <button
-                onClick={handleCopyNumber}
-                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
-              >
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
+              <button type="button" onClick={() => { if (onUnlockWithWallet(selectedTier, amountNum)) onClose(); }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl shadow cursor-pointer">
+                Activate Instantly Using Wallet (KES {amountNum})
               </button>
-            </div>
-          </div>
-
-          <input
-            type="text"
-            value={mpesaNameOrRef}
-            onChange={(e) => setMpesaNameOrRef(e.target.value)}
-            placeholder="Optional: Enter M-Pesa/Airtel Name or Ref Code"
-            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-blue-600"
-          />
-
-          {!userEmail && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-900 text-xs p-2.5 rounded-xl">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <span>Please <strong>Sign In</strong> first so we know which account to activate!</span>
             </div>
           )}
 
-          <button
-            onClick={handleIHavePaid}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span>{userEmail ? 'I Have Paid — Verify on WhatsApp' : 'Sign In First'}</span>
-          </button>
+          {submittedDone || existingPending ? (
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 text-center space-y-2">
+              <Clock className="w-9 h-9 text-blue-600 mx-auto" />
+              <div className="text-sm font-black text-[#0B0F19]">Payment Submitted for Verification</div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Transaction <strong>{existingPending?.mpesaCode || mpesaCode}</strong> is now in our live verification queue. Your VIP access unlocks automatically within moments once approved!
+              </p>
+              <button type="button" onClick={onClose} className="w-full bg-[#0B0F19] text-white font-black py-2.5 rounded-xl mt-2 cursor-pointer">Done &amp; Return to App</button>
+            </div>
+          ) : (
+            <>
+              <div className="bg-slate-900 text-white rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase text-blue-300 flex items-center gap-1"><Smartphone className="w-3.5 h-3.5" /> M-Pesa / Till / Send Money</span>
+                  <span className="text-xs font-black text-amber-400">Pay KES {amountStr}</span>
+                </div>
+                <div className="flex items-center justify-between bg-white/10 px-3 py-2 rounded-xl border border-white/15">
+                  <span className="font-mono text-sm font-black tracking-wider">{settings.paymentNumber}</span>
+                  <button type="button" onClick={handleCopyNumber} className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer">
+                    {copied ? <><CheckCircle2 className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                  </button>
+                </div>
+              </div>
 
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>18+ Match Analysis Only • Instant Approval</span>
+              {errorMsg && (
+                <div className="bg-red-50 border border-red-200 text-red-700 font-bold p-2.5 rounded-xl flex items-start gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{errorMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-2.5">
+                <div>
+                  <label className="block text-[11px] font-extrabold text-slate-700 mb-1">Paste M-Pesa Transaction Code or Full SMS</label>
+                  <textarea rows={2} required value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value)} placeholder="e.g. SJK84L9P2X Confirmed. Ksh350.00 sent to..." className="w-full p-2.5 text-xs border border-slate-300 rounded-xl font-mono" />
+                </div>
+                <button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-black py-3 rounded-xl shadow cursor-pointer">
+                  {submitting ? '⏳ Submitting to Verification Desk...' : `Submit KES ${amountStr} Payment for Instant Approval`}
+                </button>
+              </form>
+            </>
+          )}
+
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 pt-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Automatic Cloud Activation • 24/7 Verification Desk</span>
           </div>
         </div>
       </div>

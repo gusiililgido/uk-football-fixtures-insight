@@ -93,3 +93,19 @@ export interface AppNotification {
   publicTeaserBody?: string;
   createdAt: string;
 }
+
+
+
+
+
+export interface PaymentRequest {
+  id: string;
+  userEmail: string;
+  userName: string;
+  userPhone?: string;
+  tier: 'DAY_DEAL' | 'VIP_MONTHLY';
+  amountKes: string;
+  mpesaCode: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+}
