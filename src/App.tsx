@@ -276,7 +276,7 @@ export function App() {
     isInitialMount.current = false;
     syncFromCloud();
     const livePoll = setInterval(async () => {
-      if (Date.now() - lastLocalWriteMs.current < 12000) return;
+      if (Date.now() - lastLocalWriteMs.current < 6000) return;
       const [uList, pList, sSpot, sPosts, sSet, sAnn, sNotif] = await Promise.all([
         fetchCloudState<UserProfile[]>("users"),
         fetchCloudState<Prediction[]>("predictions"),
@@ -294,19 +294,18 @@ export function App() {
           return Array.from(map.values());
         });
       }
-      if (Array.isArray(pList) && pList.length > 0) { isInitialMount.current = true; setPredictions(pList); setTimeout(() => { isInitialMount.current = false; }, 300); }
+      if (Array.isArray(pList) && pList.length > 0) setPredictions(pList);
       if (sSpot) setSpotlight(sSpot);
       if (Array.isArray(sPosts)) setHomePosts(sPosts);
       if (sSet) setSettings((prev) => ({ ...prev, ...sSet }));
       if (Array.isArray(sAnn)) setAnnouncements(sAnn);
       if (Array.isArray(sNotif)) setNotifications(sNotif);
-    }, 10000);
+    }, 8000);
     return () => clearInterval(livePoll);
   }, []);
 
   useEffect(() => {
     localStorage.setItem('ukffi_settings', JSON.stringify(settings));
-    lastLocalWriteMs.current = Date.now(); saveCloudState('settings', settings);
   }, [settings]);
 
   useEffect(() => {
@@ -315,7 +314,6 @@ export function App() {
     } catch {
       // Ignore quota if large video
     }
-    lastLocalWriteMs.current = Date.now(); saveCloudState('spotlight', spotlight);
   }, [spotlight]);
 
   useEffect(() => {
@@ -324,7 +322,6 @@ export function App() {
     } catch {
       // Ignore quota
     }
-    lastLocalWriteMs.current = Date.now(); saveCloudState('home_posts', homePosts);
   }, [homePosts]);
 
   useEffect(() => {
@@ -333,19 +330,15 @@ export function App() {
 
   useEffect(() => {
     localStorage.setItem('ukffi_predictions', JSON.stringify(predictions));
-    lastLocalWriteMs.current = Date.now(); saveCloudState('predictions', predictions);
   }, [predictions]);
 
   useEffect(() => {
     localStorage.setItem('ukffi_users', JSON.stringify(users));
-    lastLocalWriteMs.current = Date.now(); saveCloudState('users', users);
   }, [users]);
 
   useEffect(() => {
     localStorage.setItem("ukffi_announcements", JSON.stringify(announcements));
     localStorage.setItem("ukffi_notifications", JSON.stringify(notifications));
-    lastLocalWriteMs.current = Date.now(); saveCloudState("notifications", notifications);
-    lastLocalWriteMs.current = Date.now(); saveCloudState('announcements', announcements);
   }, [announcements, notifications]);
 
   useEffect(() => {
@@ -437,7 +430,12 @@ export function App() {
   };
   const handlePushNotification = (type: AppNotification["type"], title: string, body: string, targetTier: "ALL" | "DAY_DEAL" | "VIP_MONTHLY" = "ALL", publicTeaserBody?: string) => {
     const newItem: AppNotification = { id: "notif-" + Date.now(), type, title, body, targetTier, publicTeaserBody, createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
-    setNotifications((prev) => [newItem, ...prev.slice(0, 29)]);
+    setNotifications((prev) => {
+      const next = [newItem, ...prev.slice(0, 29)];
+      lastLocalWriteMs.current = Date.now();
+      saveCloudState("notifications", next);
+      return next;
+    });
     const resolved = resolveNotificationText(newItem, currentUser?.tier || "FREE", isAdmin);
     if ("serviceWorker" in navigator && Notification.permission === "granted") {
       navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body: resolved.text, icon: "/icon-192.png", badge: "/icon-192.png" })).catch(() => {});
@@ -706,7 +704,7 @@ export function App() {
             setSettings={setSettings}
             users={users}
             setUsers={setUsers}
-            setAnnouncements={setAnnouncements}
+            announcements={announcements} setAnnouncements={setAnnouncements}
             onPushNotification={handlePushNotification}
             cloudSyncOk={cloudSyncOk}
             onForceCloudPush={async () => {
