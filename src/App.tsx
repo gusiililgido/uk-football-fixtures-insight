@@ -272,23 +272,31 @@ export function App() {
     }
 
     syncFromCloud();
-    const livePoll = setInterval(() => {
-      fetchCloudState<UserProfile[]>("users").then((latestUsers) => {
-        if (latestUsers && Array.isArray(latestUsers)) {
-          setUsers((prev) => {
-            const map = new Map<string, UserProfile>();
-            for (const u of prev) map.set(u.email.toLowerCase(), u);
-            for (const u of latestUsers) map.set(u.email.toLowerCase(), u);
-            return Array.from(map.values());
-          });
-        }
-      });
-      fetchCloudState<Prediction[]>("predictions").then((latestPreds) => {
-        if (latestPreds && Array.isArray(latestPreds) && latestPreds.length > 0) {
-          setPredictions(latestPreds);
-        }
-      });
-    }, 15000);
+    const livePoll = setInterval(async () => {
+      const [uList, pList, sSpot, sPosts, sSet, sAnn, sNotif] = await Promise.all([
+        fetchCloudState<UserProfile[]>("users"),
+        fetchCloudState<Prediction[]>("predictions"),
+        fetchCloudState<SpotlightMedia>("spotlight"),
+        fetchCloudState<HomeFeedPost[]>("homePosts"),
+        fetchCloudState<AppSettings>("settings"),
+        fetchCloudState<string[]>("announcements"),
+        fetchCloudState<AppNotification[]>("notifications"),
+      ]);
+      if (Array.isArray(uList) && uList.length > 0) {
+        setUsers((prev) => {
+          const map = new Map<string, UserProfile>();
+          for (const u of prev) map.set(u.email.toLowerCase(), u);
+          for (const u of uList) map.set(u.email.toLowerCase(), u);
+          return Array.from(map.values());
+        });
+      }
+      if (Array.isArray(pList) && pList.length > 0) setPredictions(pList);
+      if (sSpot) setSpotlight(sSpot);
+      if (Array.isArray(sPosts)) setHomePosts(sPosts);
+      if (sSet) setSettings((prev) => ({ ...prev, ...sSet }));
+      if (Array.isArray(sAnn)) setAnnouncements(sAnn);
+      if (Array.isArray(sNotif)) setNotifications(sNotif);
+    }, 10000);
     return () => clearInterval(livePoll);
   }, []);
 
@@ -697,6 +705,19 @@ export function App() {
             setAnnouncements={setAnnouncements}
             onPushNotification={handlePushNotification}
             cloudSyncOk={cloudSyncOk}
+            onForceCloudPush={async () => {
+              const results = await Promise.all([
+                saveCloudState("predictions", predictions),
+                saveCloudState("users", users),
+                saveCloudState("spotlight", spotlight),
+                saveCloudState("homePosts", homePosts),
+                saveCloudState("settings", settings),
+                saveCloudState("announcements", announcements),
+                saveCloudState("notifications", notifications),
+              ]);
+              const failed = results.find((r) => !r.ok);
+              return failed ? { ok: false, message: failed.errorMsg || "Sync failed" } : { ok: true, message: "All tips, images, users & settings pushed to Supabase!" };
+            }}
           />
         )}
         {showAuthModal && <AuthModal existingUsers={users} onRegister={handleRegisterUser} onLogin={handleLoginUser} contextBanner={authContextBanner} onClose={() => { setShowAuthModal(false); setAuthContextBanner(""); }} />}

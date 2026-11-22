@@ -49,6 +49,7 @@ interface AdminPanelProps {
     publicTeaserBody?: string
   ) => void;
   cloudSyncOk: boolean;
+  onForceCloudPush?: () => Promise<{ ok: boolean; message: string }>;
 }
 
 type AdminSubTab = 'MATCHES' | 'SPOTLIGHT' | 'USERS' | 'SYSTEM';
@@ -87,6 +88,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   setAnnouncements,
   onPushNotification,
   cloudSyncOk,
+  onForceCloudPush,
 }) => {
   const [subTab, setSubTab] = useState<AdminSubTab>('MATCHES');
   const [matchListMode, setMatchListMode] = useState<'ACTIVE' | 'HISTORY'>('ACTIVE');
@@ -506,8 +508,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ))}
         </div>
       )}
-      {subTab === 'SYSTEM' && (
+      {subTab === "SYSTEM" && (
         <div className="space-y-3 text-xs">
+          {onForceCloudPush && (
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await onForceCloudPush();
+                notify(res.ok ? "✅ " + res.message : "⚠️ " + res.message);
+              }}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 px-4 rounded-xl shadow cursor-pointer"
+            >
+              Force Push All Local Tips, Images &amp; Users to Supabase Cloud
+            </button>
+          )}
           <div className="bg-white rounded-xl border p-3 space-y-2">
             <div className="flex justify-between font-bold"><span><Wrench className="w-3.5 h-3.5 inline mr-1" />Maintenance</span><button onClick={() => setSettings((p) => ({ ...p, maintenanceMode: !p.maintenanceMode }))} className="px-2.5 py-0.5 rounded bg-slate-200 font-black">{settings.maintenanceMode ? 'ON' : 'OFF'}</button></div>
             <div className="flex justify-between font-bold"><span>Force Telegram Gate</span><button onClick={() => setSettings((p) => ({ ...p, forceTelegramJoin: !p.forceTelegramJoin }))} className="px-2.5 py-0.5 rounded bg-blue-600 text-white font-black">{settings.forceTelegramJoin ? 'ON' : 'OFF'}</button></div>
