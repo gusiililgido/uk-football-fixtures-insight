@@ -94,7 +94,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [matchListMode, setMatchListMode] = useState<'ACTIVE' | 'HISTORY'>('ACTIVE');
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('ALL');
   const [editingMatch, setEditingMatch] = useState<Prediction | null>(null);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState("");
+  const [pushingCloud, setPushingCloud] = useState(false);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const yesterdayIso = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -513,13 +514,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {onForceCloudPush && (
             <button
               type="button"
+              disabled={pushingCloud}
               onClick={async () => {
-                const res = await onForceCloudPush();
-                notify(res.ok ? "✅ " + res.message : "⚠️ " + res.message);
+                setPushingCloud(true);
+                setToast("⏳ Uploading all tips, images & users to Supabase...");
+                try {
+                  const res = await onForceCloudPush();
+                  setToast(res.ok ? "✅ " + res.message : "⚠️ " + res.message);
+                } catch (err: any) {
+                  setToast("⚠️ Error: " + (err?.message || "Upload failed"));
+                } finally {
+                  setPushingCloud(false);
+                  setTimeout(() => setToast(""), 8000);
+                }
               }}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 px-4 rounded-xl shadow cursor-pointer"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-black py-3 px-4 rounded-xl shadow cursor-pointer"
             >
-              Force Push All Local Tips, Images &amp; Users to Supabase Cloud
+              {pushingCloud ? "⏳ Syncing to Supabase Cloud..." : "Force Push All Local Tips, Images & Users to Supabase Cloud"}
             </button>
           )}
           <div className="bg-white rounded-xl border p-3 space-y-2">
