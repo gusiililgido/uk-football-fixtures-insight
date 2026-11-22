@@ -399,7 +399,12 @@ export function App() {
     const updated = [newUser, ...users];
     setUsers(updated);
     try { localStorage.setItem("ukffi_users", JSON.stringify(updated)); } catch {}
-    saveCloudState("users", updated);
+    fetchCloudState<UserProfile[]>("users").then((cloudList) => {
+      const base = Array.isArray(cloudList) ? cloudList : users;
+      const dedup = [newUser, ...base.filter((u) => u.email.toLowerCase() !== cleanEmail)];
+      setUsers(dedup);
+      saveCloudState("users", dedup);
+    });
     setCurrentUserEmail(cleanEmail);
     localStorage.setItem("ukffi_current_email", cleanEmail);
     setShowAuthModal(false); setAuthContextBanner("");
@@ -596,6 +601,27 @@ export function App() {
           }
         }}
       >
+        {activeTab === "HOME" && !currentUser && (
+          <div className="bg-gradient-to-r from-blue-900 via-[#0B0F19] to-red-950 text-white rounded-2xl p-4 border-2 border-blue-500 shadow-xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="bg-emerald-500 text-[#0B0F19] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Free Member Access Required</span>
+              <span className="text-[10px] font-bold text-blue-300">Instant Activation</span>
+            </div>
+            <h3 className="text-sm sm:text-base font-black">Create Your Free Account to Access All App Services</h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Register with your phone number, email &amp; password to unlock <strong>Daily Free (2–5 Odds)</strong>, <strong>Rewarded Ads Wallet</strong>, <strong>VIP Slips</strong> &amp; <strong>Live Matchday Dashboards</strong>.
+            </p>
+            <button
+              onClick={() => {
+                setAuthContextBanner("Register below to unlock Daily Free games, Rewarded Ads & Live Dashboards.");
+                setShowAuthModal(true);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-2.5 rounded-xl shadow cursor-pointer"
+            >
+              Register Free Account / Sign In Now
+            </button>
+          </div>
+        )}
         {activeTab === 'HOME' && (
           <HomeView
             spotlight={spotlight}
@@ -626,7 +652,14 @@ export function App() {
             settings={settings}
             freeTipsUnlocked={freeTipsUnlockedToday}
             onOpenAdForFreeTips={() => setAdModalPurpose('UNLOCK_FREE')}
-            onOpenPayment={(tier) => setPaymentModalTier(tier)}
+            onOpenPayment={(tier) => {
+              if (!currentUser) {
+                setAuthContextBanner("Create a free account or sign in first to unlock Day Deal or VIP Monthly.");
+                setShowAuthModal(true);
+                return;
+              }
+              setPaymentModalTier(tier);
+            }}
             onPreviewImage={(url, title, subtitle) => setPreviewMedia({ url, title, subtitle })}
           />
         )}
