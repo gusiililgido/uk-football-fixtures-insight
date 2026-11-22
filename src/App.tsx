@@ -677,7 +677,7 @@ export function App() {
             onPreviewImage={(url, title, subtitle) => setPreviewMedia({ url, title, subtitle })}
           />
         )}
-        {activeTab === 'SETTINGS' && (
+        {activeTab === 'SETTINGS' && currentUser && (
           <SettingsView
             currentUser={currentUser}
             walletBalance={activeWalletBalance}
