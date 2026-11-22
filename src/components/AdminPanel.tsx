@@ -335,7 +335,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleSaveSystemSettings = async () => {
     const cleanedWa = (draftSettings.whatsappGroupUrl || '')
-      .replace('https://://', 'https://').replace('http://://', 'http://');
+      .replace('https://://', 'https://').replace('http://://', 'http://').trim();
     const finalSettings = { ...draftSettings, whatsappGroupUrl: cleanedWa };
     setDraftSettings(finalSettings);
     setSettings(finalSettings);
