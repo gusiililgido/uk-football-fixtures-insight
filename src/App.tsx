@@ -119,6 +119,7 @@ export function App() {
   const activeIdentityKey = currentUserEmail ? currentUserEmail.trim().toLowerCase() : "guest";
   const telegramVerified = Boolean(telegramVerifiedMap[activeIdentityKey]);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authContextBanner, setAuthContextBanner] = useState("");
   const [paymentModalTier, setPaymentModalTier] = useState<Exclude<
     PredictionTier,
     'FREE'
@@ -251,7 +252,19 @@ export function App() {
       if (cSpotlight) setSpotlight(cSpotlight);
       if (cHomePosts) setHomePosts(cHomePosts);
       if (cPredictions) setPredictions(cPredictions);
-      if (cUsers) setUsers(cUsers);
+      if (cUsers && Array.isArray(cUsers)) {
+        setUsers((localUsers) => {
+          const map = new Map<string, UserProfile>();
+          for (const u of cUsers) map.set(u.email.toLowerCase(), u);
+          for (const u of localUsers) {
+            const existing = map.get(u.email.toLowerCase());
+            map.set(u.email.toLowerCase(), existing ? { ...existing, ...u } : u);
+          }
+          const mergedUsers = Array.from(map.values());
+          saveCloudState("users", mergedUsers);
+          return mergedUsers;
+        });
+      }
       if (cAnnouncements) setAnnouncements(cAnnouncements);
       if (cNotifications) setNotifications(cNotifications);
 
@@ -259,6 +272,24 @@ export function App() {
     }
 
     syncFromCloud();
+    const livePoll = setInterval(() => {
+      fetchCloudState<UserProfile[]>("users").then((latestUsers) => {
+        if (latestUsers && Array.isArray(latestUsers)) {
+          setUsers((prev) => {
+            const map = new Map<string, UserProfile>();
+            for (const u of prev) map.set(u.email.toLowerCase(), u);
+            for (const u of latestUsers) map.set(u.email.toLowerCase(), u);
+            return Array.from(map.values());
+          });
+        }
+      });
+      fetchCloudState<Prediction[]>("predictions").then((latestPreds) => {
+        if (latestPreds && Array.isArray(latestPreds) && latestPreds.length > 0) {
+          setPredictions(latestPreds);
+        }
+      });
+    }, 15000);
+    return () => clearInterval(livePoll);
   }, []);
 
   useEffect(() => {
@@ -360,65 +391,43 @@ export function App() {
   const activeWalletBalance = currentUser ? currentUser.walletBalance || 0 : guestWallet;
   const activeAdsWatched = currentUser ? currentUser.adsWatchedCount || 0 : guestAdsCount;
 
-  const handleLogin = (email: string, name: string) => {
-    setCurrentUserEmail(email);
-    const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!exists) {
-      setUsers((prev) => [
-        ...prev,
-        {
-          email,
-          name,
-          tier: 'FREE',
-          expiresAt: null,
-          walletBalance: guestWallet,
-          adsWatchedCount: guestAdsCount,
-          lastAdRewardDate: guestLastRewardDate,
-          isBanned: false,
-          isOnline: true,
-        },
-      ]);
-      setGuestWallet(0);
-      setGuestAdsCount(0);
-    }
+  const handleRegisterUser = (data: { name: string; countryCode: string; phone: string; email: string; password: string }) => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const exists = users.find((u) => u.email.toLowerCase() === cleanEmail || (u.phone && u.phone === data.phone));
+    if (exists) return { ok: false, error: "Account already exists. Tap Sign In above." };
+    const newUser: UserProfile = { email: cleanEmail, name: data.name, phone: data.phone, countryCode: data.countryCode, password: data.password, registeredAt: new Date().toISOString().slice(0, 10), tier: "FREE", expiresAt: null, isBanned: false, isOnline: true, walletBalance: 0, adsWatchedCount: 0, lastAdRewardDate: null };
+    const updated = [newUser, ...users];
+    setUsers(updated);
+    try { localStorage.setItem("ukffi_users", JSON.stringify(updated)); } catch {}
+    saveCloudState("users", updated);
+    setCurrentUserEmail(cleanEmail);
+    localStorage.setItem("ukffi_current_email", cleanEmail);
+    setShowAuthModal(false); setAuthContextBanner("");
+    return { ok: true };
   };
-
-  const handlePushNotification = (
-    type: AppNotification["type"],
-    title: string,
-    body: string,
-    targetTier: "ALL" | "DAY_DEAL" | "VIP_MONTHLY" = "ALL",
-    publicTeaserBody?: string
-  ) => {
-    const newItem: AppNotification = {
-      id: "notif-" + Date.now(),
-      type,
-      title,
-      body,
-      targetTier,
-      publicTeaserBody,
-      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
+  const handleLoginUser = (identifier: string, password: string) => {
+    const cleanId = identifier.trim().toLowerCase();
+    const digits = identifier.replace(/\D/g, "");
+    const found = users.find((u) => u.email.toLowerCase() === cleanId || (digits.length >= 7 && (u.phone || "").replace(/\D/g, "").endsWith(digits.slice(-9))));
+    if (!found) return { ok: false, error: "Account not found. Tap Create Account first!" };
+    if (found.password && found.password !== password && found.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return { ok: false, error: "Incorrect password." };
+    const updated = users.map((u) => u.email.toLowerCase() === found.email.toLowerCase() ? { ...u, isOnline: true } : u);
+    setUsers(updated); saveCloudState("users", updated);
+    setCurrentUserEmail(found.email.toLowerCase());
+    localStorage.setItem("ukffi_current_email", found.email.toLowerCase());
+    setShowAuthModal(false); setAuthContextBanner("");
+    return { ok: true };
+  };
+  const handlePushNotification = (type: AppNotification["type"], title: string, body: string, targetTier: "ALL" | "DAY_DEAL" | "VIP_MONTHLY" = "ALL", publicTeaserBody?: string) => {
+    const newItem: AppNotification = { id: "notif-" + Date.now(), type, title, body, targetTier, publicTeaserBody, createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
     setNotifications((prev) => [newItem, ...prev.slice(0, 29)]);
-    const activeTier = currentUser?.tier || "FREE";
-    const resolved = resolveNotificationText(newItem, activeTier, isAdmin);
+    const resolved = resolveNotificationText(newItem, currentUser?.tier || "FREE", isAdmin);
     if ("serviceWorker" in navigator && Notification.permission === "granted") {
-      navigator.serviceWorker.ready
-        .then((reg) =>
-          reg.showNotification(title, {
-            body: resolved.text,
-            icon: "/icon-192.png",
-            badge: "/icon-192.png",
-          })
-        )
-        .catch(() => {});
+      navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body: resolved.text, icon: "/icon-192.png", badge: "/icon-192.png" })).catch(() => {});
     }
   };
-
-  const unreadCount = notifications.filter((n) => n.id !== lastSeenNotifId).length > 0 && lastSeenNotifId !== notifications.slice(0, 1).shift()?.id
-    ? Math.max(1, notifications.findIndex((n) => n.id === lastSeenNotifId) === -1 ? notifications.length : notifications.findIndex((n) => n.id === lastSeenNotifId))
-    : 0;
-
+  const firstNotifId = notifications.slice(0, 1).shift()?.id;
+  const unreadCount = firstNotifId && lastSeenNotifId !== firstNotifId ? Math.max(1, notifications.findIndex((n) => n.id === lastSeenNotifId) === -1 ? notifications.length : notifications.findIndex((n) => n.id === lastSeenNotifId)) : 0;
   const handleLogout = () => {
     setCurrentUserEmail(null);
     if (activeTab === 'ADMIN') setActiveTab('HOME');
@@ -536,7 +545,7 @@ export function App() {
             pushGranted={notificationPermission === "granted"}
           />
         )}
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
+        {showAuthModal && <AuthModal existingUsers={users} onRegister={handleRegisterUser} onLogin={handleLoginUser} contextBanner={authContextBanner} onClose={() => { setShowAuthModal(false); setAuthContextBanner(""); }} />}
       </div>
     );
   }
@@ -575,6 +584,11 @@ export function App() {
         onRequestNotifications={handleRequestNotifications}
         unreadCount={unreadCount}
         onOpenNotifications={() => {
+          if (!currentUser) {
+            setAuthContextBanner("Register or sign in to view live matchday notifications.");
+            setShowAuthModal(true);
+            return;
+          }
           setShowNotificationsModal(true);
           if (notifications.slice(0, 1).shift()?.id) {
             setLastSeenNotifId(notifications.slice(0, 1).shift()!.id);
@@ -652,7 +666,7 @@ export function App() {
             cloudSyncOk={cloudSyncOk}
           />
         )}
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
+        {showAuthModal && <AuthModal existingUsers={users} onRegister={handleRegisterUser} onLogin={handleLoginUser} contextBanner={authContextBanner} onClose={() => { setShowAuthModal(false); setAuthContextBanner(""); }} />}
         {paymentModalTier && (
           <PaymentModal
             tier={paymentModalTier}

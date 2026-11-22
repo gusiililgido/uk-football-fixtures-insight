@@ -69,6 +69,10 @@ export interface AppSettings {
 }
 
 export interface UserProfile {
+  phone?: string;
+  countryCode?: string;
+  password?: string;
+  registeredAt?: string;
   email: string;
   name: string;
   tier: PredictionTier;

@@ -474,8 +474,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
-      {subTab === 'USERS' && (
-        <div className="space-y-2">{users.map((u) => (<div key={u.email} className="bg-white rounded-xl border p-3 space-y-2"><div className="flex justify-between"><span className="text-xs font-black">{u.name} ({u.tier}) • KES {u.walletBalance || 0}</span><button onClick={() => handleToggleBan(u.email)} className="text-red-600"><Ban className="w-4 h-4" /></button></div><div className="grid grid-cols-2 gap-1"><button onClick={() => handleAdjustWallet(u.email, 50)} className="bg-emerald-50 text-[10px] font-bold py-1 rounded">+50</button><button onClick={() => handleAdjustWallet(u.email, 350)} className="bg-emerald-600 text-white text-[10px] font-bold py-1 rounded">+350</button></div><div className="grid grid-cols-3 gap-1"><button onClick={() => handleGrantTier(u.email, 'FREE')} className="bg-slate-100 text-[10px] font-bold py-1 rounded">FREE</button><button onClick={() => handleGrantTier(u.email, 'DAY_DEAL')} className="bg-blue-600 text-white text-[10px] font-bold py-1 rounded">DAY DEAL</button><button onClick={() => handleGrantTier(u.email, 'VIP_MONTHLY')} className="bg-red-600 text-white text-[10px] font-bold py-1 rounded">VIP</button></div></div>))}</div>
+      {subTab === "USERS" && (
+        <div className="space-y-2.5">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
+            <span className="font-black text-blue-900">Registered Accounts ({users.length})</span>
+            <span className="text-[10px] font-bold text-emerald-700">Live Cloud Synced ✓</span>
+          </div>
+          {users.map((u) => (
+            <div key={u.email} className="bg-white rounded-xl border p-3 space-y-2 shadow-xs">
+              <div className="flex justify-between items-start gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${u.isOnline ? "bg-emerald-500" : "bg-slate-300"}`} />
+                    <span className="text-xs font-black text-[#0B0F19]">{u.name}</span>
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-700 mt-0.5">📱 {u.phone || "No phone"} • ✉️ {u.email}</div>
+                  <div className="text-[11px] font-extrabold text-blue-700 mt-0.5">Tier: {u.tier} • Wallet: KES {u.walletBalance || 0} {u.registeredAt ? `• Joined: ${u.registeredAt}` : ""}</div>
+                </div>
+                <button onClick={() => handleToggleBan(u.email)} className="p-1.5 rounded-lg bg-red-50 text-red-600"><Ban className="w-4 h-4" /></button>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button onClick={() => handleAdjustWallet(u.email, 50)} className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold py-1 rounded-lg">+50 KES</button>
+                <button onClick={() => handleAdjustWallet(u.email, 350)} className="bg-emerald-600 text-white text-[10px] font-bold py-1 rounded-lg">+350 KES</button>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button onClick={() => handleGrantTier(u.email, "FREE")} className="bg-slate-100 text-[10px] font-bold py-1 rounded-lg">FREE</button>
+                <button onClick={() => handleGrantTier(u.email, "DAY_DEAL")} className="bg-blue-600 text-white text-[10px] font-bold py-1 rounded-lg">DAY DEAL</button>
+                <button onClick={() => handleGrantTier(u.email, "VIP_MONTHLY")} className="bg-red-600 text-white text-[10px] font-bold py-1 rounded-lg">VIP</button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
       {subTab === 'SYSTEM' && (
         <div className="space-y-3 text-xs">
