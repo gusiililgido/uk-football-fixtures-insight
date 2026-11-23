@@ -1,3 +1,4 @@
+import { GoogleAdBanner } from './GoogleAdBanner';
 import React, { useEffect, useState } from 'react';
 import {
   Lock,
@@ -244,6 +245,8 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
           <input type="date" value={selectedDate} onChange={(e) => e.target.value && setSelectedDate(e.target.value)} className="px-2.5 py-1 text-xs font-bold border border-slate-300 rounded-lg bg-slate-50" />
         </div>
       </div>
+
+      <GoogleAdBanner clientId={settings.adSenseClientId} enabled={settings.adsEnabled} />
 
       {needsAdUnlock ? (
         <div className="bg-white rounded-2xl border-2 border-blue-600/30 p-6 text-center space-y-3 shadow-md">

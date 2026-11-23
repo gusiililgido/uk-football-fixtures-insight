@@ -66,6 +66,7 @@ export interface AppSettings {
   autoPostTelegram?: boolean;
   maintenanceMessage: string;
   adsEnabled: boolean;
+  adSenseClientId?: string;
   freeTipsAdLock: boolean;
   adRewardKes: number;
   adDurationSeconds: number;

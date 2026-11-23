@@ -1,3 +1,4 @@
+import { PolicyFooter } from './components/PolicyFooter';
 import { TelegramJoinModal } from './components/TelegramJoinModal';
 import { AccountView } from './components/AccountView';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -780,6 +781,7 @@ export function App() {
             onClose={() => setPreviewMedia(null)}
           />
         )}
+            <PolicyFooter />
       </Layout>
     </div>
   );

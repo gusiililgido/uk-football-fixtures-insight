@@ -1,6 +1,18 @@
 {
+  "headers": [
+    {
+      "source": "/ads.txt",
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/ads.txt", "destination": "/ads.txt" },
+    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/((?!api/|ads\\.txt|robots\\.txt).*)", "destination": "/index.html" }
   ]
 }

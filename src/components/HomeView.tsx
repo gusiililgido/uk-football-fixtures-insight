@@ -424,6 +424,38 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </a>
         </div>
       </section>
+    
+      <GoogleAdBanner clientId={settings.adSenseClientId} enabled={settings.adsEnabled} />
+
+      <section className="bg-white rounded-3xl border border-slate-200 p-5 space-y-3 shadow-xs">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
+            Editorial Football Research Desk
+          </span>
+          <span className="text-[10px] font-bold text-slate-400">Updated Daily</span>
+        </div>
+        <h3 className="text-base font-black text-[#0B0F19]">
+          How Our U.K. &amp; European Football Analysts Evaluate Matchday Fixtures
+        </h3>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Every fixture featured on <strong>U.K. Football Fixtures Insight</strong> undergoes a structured multi-factor pre-match evaluation covering the English Premier League, EFL Championship, UEFA Champions League, and top European domestic leagues. Rather than relying on surface-level league standings, our desk examines expected goals (xG) trends, home versus away defensive resilience, squad rotation after midweek European fixtures, and confirmed injury news.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 space-y-1">
+            <div className="font-black text-[#0B0F19]">1. Tactical Form &amp; xG Differential</div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              We compare five-match rolling expected goals created and conceded to identify teams outperforming or underperforming market expectations.
+            </p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 space-y-1">
+            <div className="font-black text-[#0B0F19]">2. Verified Post-Match Accountability</div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Every published fixture is tracked in real time with live 90-minute match clocks and archived transparently in our date calendar with verified scorelines.
+            </p>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 };
