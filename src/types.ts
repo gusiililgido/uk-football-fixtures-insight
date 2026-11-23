@@ -46,6 +46,11 @@ export interface HomeFeedPost {
 
 export interface AppSettings {
   paymentNumber: string;
+  paymentMethodTitle?: string;
+  paymentAccountNumber?: string;
+  paymentAccountName?: string;
+  paymentInstructions?: string;
+  paymentPosterUrl?: string;
   paymentNetworkLabel: string;
   dayDealPrice: string;
   vipMonthlyPrice: string;
