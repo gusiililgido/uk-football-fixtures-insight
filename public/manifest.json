@@ -1,10 +1,8 @@
 {
-  "id": "/",
-  "name": "U.K FOOTBALL FIXTURES INSIGHT",
+  "name": "U.K. Football Fixtures Insight",
   "short_name": "UK Fixtures",
-  "description": "98% Statistical U.K. Football Match Analysis & Daily Insights (18+ Only)",
-  "start_url": "/?source=pwa",
-  "scope": "/",
+  "description": "Professional U.K. & European Football Predictions, Live 90-Min Match Clocks & Verified VIP Slips",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0B0F19",
   "theme_color": "#0B0F19",
@@ -20,7 +18,7 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
