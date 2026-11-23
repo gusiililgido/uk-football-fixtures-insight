@@ -261,7 +261,7 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
       ) : (
         <div className="space-y-3">
           {filtered.map((item) => (
-            <PredictionCard key={item.id} item={item} nowMs={nowMs} onPreviewImage={onPreviewImage} />
+            <PredictionCard key={item.id} item={item} nowMs={nowMs} isAuthorized={hasAccess} onUnlockPaid={() => onOpenPayment((item.tier === "FREE" ? "DAY_DEAL" : item.tier) as "DAY_DEAL" | "VIP_MONTHLY")} onPreviewImage={onPreviewImage} />
           ))}
         </div>
       )}
@@ -272,8 +272,11 @@ export const PredictionsView: React.FC<PredictionsViewProps> = ({
 const PredictionCard: React.FC<{
   item: Prediction;
   nowMs: number;
+  isAuthorized: boolean;
+  onUnlockPaid: () => void;
   onPreviewImage: (url: string, title: string, subtitle?: string) => void;
-}> = ({ item, nowMs, onPreviewImage }) => {
+}> = ({ item, nowMs, isAuthorized, onUnlockPaid, onPreviewImage }) => {
+  const isPaidSpoilerLocked = item.tier !== 'FREE' && !isAuthorized;
   const isImageOnlySlip =
     Boolean(item.betslipImageUrl) &&
     (!item.homeTeam.trim() || item.homeTeam.trim() === 'Verified Betslip');
@@ -298,11 +301,49 @@ const PredictionCard: React.FC<{
           </div>
           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${badge.bg} ${badge.text}`}>{badge.icon}<span>{item.status}</span></span>
         </div>
-        <div onClick={() => onPreviewImage(item.betslipImageUrl!, item.league || 'Official Betslip', `${item.matchDate} • Status: ${item.status}${item.odds ? ` • Odds: ${item.odds}` : ''}`)} className="bg-slate-950 cursor-pointer relative group">
-          <img src={item.betslipImageUrl} alt="Verified Betslip" className="w-full max-h-[420px] object-contain mx-auto" />
-          <div className="bg-black/75 text-white text-[11px] font-bold px-3 py-1.5 flex items-center justify-between">
-            <span>{item.matchDate}{item.odds ? ` • Combined Odds: ${item.odds}` : ''}</span>
-            <span className="text-blue-300 underline">Tap to Zoom Fullscreen</span>
+        <div
+          onClick={() =>
+            isPaidSpoilerLocked
+              ? onUnlockPaid()
+              : onPreviewImage(
+                  item.betslipImageUrl!,
+                  item.league || 'Official Betslip',
+                  `${item.matchDate} • Status: ${item.status}${item.odds ? ` • Odds: ${item.odds}` : ''}`
+                )
+          }
+          className="bg-slate-950 cursor-pointer relative group overflow-hidden"
+        >
+          <img
+            src={item.betslipImageUrl}
+            alt="Verified Betslip"
+            className={`w-full max-h-[420px] object-contain mx-auto transition duration-300 ${isPaidSpoilerLocked ? 'blur-2xl scale-110 opacity-35 select-none pointer-events-none' : ''}`}
+          />
+          {isPaidSpoilerLocked && (
+            <div className="absolute inset-0 bg-[#0B0F19]/80 backdrop-blur-md flex flex-col items-center justify-center p-5 text-center space-y-2.5">
+              <span className="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                🔒 Paid VIP Betslip • Spoiler Hidden
+              </span>
+              <div className="text-sm font-black text-white">
+                {item.tier === 'VIP_MONTHLY' ? 'VIP Monthly (70–100 Odds)' : 'Day Deal (20–70 Odds)'}
+              </div>
+              <p className="text-[11px] text-slate-300 max-w-xs">
+                This betslip is permanently hidden until purchased &amp; authorized by Admin.
+              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnlockPaid();
+                }}
+                className="bg-amber-400 hover:bg-amber-300 text-[#0B0F19] font-black text-xs px-5 py-2.5 rounded-xl shadow-lg cursor-pointer"
+              >
+                Buy Now to Reveal Betslip
+              </button>
+            </div>
+          )}
+          <div className="bg-black/85 text-white text-[11px] font-bold px-3 py-1.5 flex items-center justify-between relative z-10">
+            <span>{isPaidSpoilerLocked ? 'PAID VIP BETSLIP • LOCKED' : `${item.matchDate}${item.odds ? ` • Combined Odds: ${item.odds}` : ''}`}</span>
+            <span className="text-amber-300 underline">{isPaidSpoilerLocked ? 'Tap to Purchase' : 'Tap to Zoom Fullscreen'}</span>
           </div>
         </div>
         {(item.analysisNote || item.resultProofUrl) && (

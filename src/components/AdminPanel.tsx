@@ -156,11 +156,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const broadcastTelegram = async (messageHtml: string, photoDataUrl?: string) => {
-    if (settings.autoPostTelegram === false) return;
-    await postToTelegramChannel({
-      botToken: settings.telegramBotToken,
-      channelId: settings.telegramChannelId,
-      channelUrl: settings.telegramChannelUrl,
+    const activeAuto = settings.autoPostTelegram !== undefined ? settings.autoPostTelegram : draftSettings.autoPostTelegram;
+    if (activeAuto === false) return { ok: false, errorMsg: 'Auto-Post is OFF' };
+    return await postToTelegramChannel({
+      botToken: settings.telegramBotToken || draftSettings.telegramBotToken,
+      channelId: settings.telegramChannelId || draftSettings.telegramChannelId,
+      channelUrl: settings.telegramChannelUrl || draftSettings.telegramChannelUrl,
       text: messageHtml,
       appUrl: window.location.origin,
       photoDataUrl,
